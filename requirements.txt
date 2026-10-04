@@ -1,0 +1,11 @@
+oracledb
+pandas
+numpy
+scikit-learn
+pypdf
+pdfplumber
+sentence-transformers
+chromadb
+python-dotenv
+requests
+streamlit
