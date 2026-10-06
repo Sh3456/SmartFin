@@ -1,0 +1,47 @@
+-- SmartFin: TCS financial periods
+-- Run after 07_demo_data.sql.
+-- FY2025 = year ended 31-Mar-2025
+-- FY2026 = year ended 31-Mar-2026
+-- Statement scope is kept explicit because standalone/consolidated statements differ.
+
+INSERT INTO FINANCIAL_PERIOD
+    (COMPANY_ID, FISCAL_YEAR, PERIOD_START, PERIOD_END,
+     STATEMENT_SCOPE, CURRENCY_CODE, UNIT_LABEL)
+SELECT COMPANY_ID,
+       'FY2025',
+       DATE '2024-04-01',
+       DATE '2025-03-31',
+       'STANDALONE',
+       'INR',
+       'CRORE'
+FROM COMPANY
+WHERE SYMBOL = 'TCS';
+
+INSERT INTO FINANCIAL_PERIOD
+    (COMPANY_ID, FISCAL_YEAR, PERIOD_START, PERIOD_END,
+     STATEMENT_SCOPE, CURRENCY_CODE, UNIT_LABEL)
+SELECT COMPANY_ID,
+       'FY2026',
+       DATE '2025-04-01',
+       DATE '2026-03-31',
+       'STANDALONE',
+       'INR',
+       'CRORE'
+FROM COMPANY
+WHERE SYMBOL = 'TCS';
+
+COMMIT;
+
+-- Verification
+SELECT FP.PERIOD_ID,
+       C.COMPANY_NAME,
+       FP.FISCAL_YEAR,
+       FP.PERIOD_START,
+       FP.PERIOD_END,
+       FP.STATEMENT_SCOPE,
+       FP.CURRENCY_CODE,
+       FP.UNIT_LABEL
+FROM FINANCIAL_PERIOD FP
+JOIN COMPANY C ON C.COMPANY_ID = FP.COMPANY_ID
+WHERE C.SYMBOL = 'TCS'
+ORDER BY FP.PERIOD_END;
