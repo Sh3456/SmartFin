@@ -1,19 +1,32 @@
-# SmartFin — Financial Statement Forensics Engine
+# Corporate Risk Manager
 
-A DBMS-first financial statement analysis project using Oracle SQL/PLSQL, ML anomaly detection, RAG evidence retrieval, and grounded LLM explanations.
+A small DBMS-focused corporate risk register built with Python and SQLite.
 
-## Pipeline
-PDF annual report → extraction → standardization → validation → Oracle DBMS → SQL/PLSQL analysis → ML anomaly detection → RAG evidence retrieval → LLM explanation
+## Scope
+- Manage departments, risk categories, risks, mitigation controls, and audit history.
+- Calculate risk score as likelihood × impact (1–25).
+- Filter risks by department, status, and score.
+- Run reports using JOINs, GROUP BY, HAVING, and window functions.
+- Keep reassessment changes transactional and record them in an audit log.
 
-## Focus
-- Liquidity risk
-- Profitability risk
-- Historical trend and YoY analysis
-- Source-page traceability
-- Oracle DBMS as the authoritative analytical layer
+No financial-statement ingestion, PDF extraction, ML, RAG, or LLM layers are included.
 
-## Planned entities
-COMPANY, FINANCIAL_PERIOD, FINANCIAL_ITEM, RAW_FINANCIAL_DATA, ITEM_MAPPING, FINANCIAL_VALUE, FINANCIAL_RATIO, RISK_ANALYSIS, ANOMALY, DOCUMENT, RAG_EVIDENCE, AUDIT_LOG
+## Run
+Requires Python 3.10+; no third-party packages are needed.
 
-## Author
-Shreyan Sharma
+```bash
+python app.py init
+python app.py seed
+python app.py risks
+python app.py report
+```
+
+The local database `corporate_risk.db` is created automatically. Do not commit real corporate risk data.
+
+## Files
+- `schema.sql` — tables, constraints, indexes, and views.
+- `seed.sql` — small demo dataset.
+- `queries.sql` — advanced SQL report examples.
+- `app.py` — CLI, CRUD, transactions, and audit logging.
+
+Risk score = likelihood × impact. Demo bands: Low (1–4), Moderate (5–9), High (10–16), Critical (17–25). Adjust thresholds to match your organization's policy.
