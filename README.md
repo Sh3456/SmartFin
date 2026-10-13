@@ -1,32 +1,40 @@
 # Corporate Risk Manager
 
-A small DBMS-focused corporate risk register built with Python and SQLite.
+A small working DBMS project using Python, Flask and SQLite.
 
-## Scope
-- Manage departments, risk categories, risks, mitigation controls, and audit history.
-- Calculate risk score as likelihood × impact (1–25).
-- Filter risks by department, status, and score.
-- Run reports using JOINs, GROUP BY, HAVING, and window functions.
-- Keep reassessment changes transactional and record them in an audit log.
+## Features
+- Dashboard: active/critical counts and department exposure
+- Risk register: search, department/status filters, add and reassess risks
+- Automatic score: likelihood × impact (1–25), calculated by SQLite
+- Mitigation controls: assign actions, owners, due dates, and mark completion
+- Audit history: changes are logged in the same transaction as the update
+- SQL examples: JOIN, GROUP BY, HAVING, RANK window function
+- Constraints, foreign keys, indexes, and a reporting view
 
-No financial-statement ingestion, PDF extraction, ML, RAG, or LLM layers are included.
+## Run (Windows PowerShell)
+Install Python 3.10+ first, then run in this folder:
 
-## Run
-Requires Python 3.10+; no third-party packages are needed.
-
-```bash
-python app.py init
-python app.py seed
-python app.py risks
-python app.py report
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python app.py
 ```
 
-The local database `corporate_risk.db` is created automatically. Do not commit real corporate risk data.
+Open http://127.0.0.1:5000.
 
-## Files
-- `schema.sql` — tables, constraints, indexes, and views.
-- `seed.sql` — small demo dataset.
-- `queries.sql` — advanced SQL report examples.
-- `app.py` — CLI, CRUD, transactions, and audit logging.
+The database schema is created automatically. To load sample records, open a second terminal in the same folder and run:
 
-Risk score = likelihood × impact. Demo bands: Low (1–4), Moderate (5–9), High (10–16), Critical (17–25). Adjust thresholds to match your organization's policy.
+```powershell
+python -c "import app; app.seed()"
+```
+
+Seed IDs use INSERT OR IGNORE, so repeating the seed command will not duplicate demo rows.
+
+## Risk score bands
+Low 1–4; Moderate 5–9; High 10–16; Critical 17–25. These are illustrative thresholds.
+
+## Database design
+The five tables separate departments, risk categories, risks, mitigation controls and audit events. Foreign keys prevent orphan rows; CHECK constraints restrict valid scores/statuses; the generated score column avoids inconsistent manually entered scores. Indexes help common filters, and each mutation plus its audit event is committed or rolled back together.
+
+This is an educational MVP, not a production security system. Before production, add authentication and authorization, configure a strong secret key, disable debug mode, and implement backups.

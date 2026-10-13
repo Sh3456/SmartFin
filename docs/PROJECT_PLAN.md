@@ -1,18 +1,11 @@
-# SmartFin Project Plan
+# Project Plan
 
-## Phase 1 — DBMS foundation
-1. Collect three annual reports.
-2. Define the standardized financial dictionary.
-3. Validate raw extracted values.
-4. Implement Oracle schema, keys, constraints and indexes.
-5. Load multi-company, multi-year data.
-6. Implement ratios, YoY analysis, views, PL/SQL and audit trigger.
+1. Install Python and Flask.
+2. Run the application; SQLite creates the schema automatically.
+3. Load the demo data.
+4. Explore the dashboard and filters.
+5. Add a risk and reassess its likelihood/impact.
+6. Add a mitigation control and mark it completed.
+7. Review audit history and run the SQL examples in queries.sql.
 
-## Phase 2 — Intelligence
-7. Add ML anomaly detection.
-8. Build evidence chunks with document/year/page metadata.
-9. Add RAG retrieval.
-10. Generate grounded explanations from SQL + ML + RAG evidence.
-
-## Principle
-Oracle is the authoritative financial-data and numerical-analysis layer. ML detects unusual patterns, RAG retrieves documentary evidence, and the LLM explains the combined evidence.
+The MVP intentionally excludes AI, PDF processing, microservices and complex dashboards so DBMS design remains the main focus.

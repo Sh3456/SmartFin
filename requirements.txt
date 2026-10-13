@@ -1,11 +1,1 @@
-oracledb
-pandas
-numpy
-scikit-learn
-pypdf
-pdfplumber
-sentence-transformers
-chromadb
-python-dotenv
-requests
-streamlit
+Flask>=3.0,<4.0

@@ -1,13 +1,11 @@
-# ER Diagram (initial)
+# ER Diagram
 
-COMPANY 1---N FINANCIAL_PERIOD
-FINANCIAL_PERIOD 1---N FINANCIAL_VALUE
-FINANCIAL_ITEM 1---N FINANCIAL_VALUE
-COMPANY 1---N RAW_FINANCIAL_DATA
-FINANCIAL_ITEM 1---N ITEM_MAPPING
-FINANCIAL_PERIOD 1---N FINANCIAL_RATIO
-FINANCIAL_PERIOD 1---N RISK_ANALYSIS
-FINANCIAL_PERIOD 1---N ANOMALY
-COMPANY 1---N DOCUMENT
-DOCUMENT 1---N RAG_EVIDENCE
-FINANCIAL_VALUE → AUDIT_LOG (audit trail)
+```mermaid
+erDiagram
+  DEPARTMENTS ||--o{ RISKS : owns
+  RISK_CATEGORIES ||--o{ RISKS : classifies
+  RISKS ||--o{ MITIGATION_CONTROLS : has
+  RISKS ||--o{ RISK_AUDIT_LOGS : records
+```
+
+A department owns many risks; each risk belongs to one department and one category. Each risk can have many mitigation controls and audit events.
