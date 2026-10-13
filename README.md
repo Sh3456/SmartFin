@@ -1,18 +1,25 @@
-# Corporate Risk Manager
+# Corporate Risk Manager + Company Financial Analysis
 
-A small working DBMS project using Python, Flask and SQLite.
+A beginner-friendly Flask and SQLite project combining a corporate risk register with a small financial statement analyzer.
 
 ## Features
-- Dashboard: active/critical counts and department exposure
-- Risk register: search, department/status filters, add and reassess risks
-- Automatic score: likelihood × impact (1–25), calculated by SQLite
-- Mitigation controls: assign actions, owners, due dates, and mark completion
-- Audit history: changes are logged in the same transaction as the update
-- SQL examples: JOIN, GROUP BY, HAVING, RANK window function
-- Constraints, foreign keys, indexes, and a reporting view
+### Corporate risk register
+- Dashboard, risk filters, risk reassessment, mitigation controls, audit log
+- Risk score = likelihood × impact (1–25)
+- Constraints, foreign keys, indexes, transactions and reporting view
 
-## Run (Windows PowerShell)
-Install Python 3.10+ first, then run in this folder:
+### Company financial analysis
+- Upload a text-based annual report PDF
+- Extract suggested values for current assets, current liabilities, inventory, revenue, net profit, total debt, equity and operating cash flow
+- Review/edit extracted values before saving
+- Store companies, financial periods and standardized financial items in normalized tables
+- Calculate current ratio, quick ratio, working capital, net profit margin and debt-to-equity
+- Display basic rule-based liquidity observations
+
+**Important:** PDF extraction is heuristic, not guaranteed. Check each suggested value against the annual report, especially the correct year, standalone/consolidated statement and unit. Scanned PDFs may require OCR, which is not included. This MVP stores the uploaded filename and values, but does not retain the PDF itself after extraction.
+
+## Run on Windows
+Python 3.10+ required.
 
 ```powershell
 py -m venv .venv
@@ -23,18 +30,26 @@ python app.py
 
 Open http://127.0.0.1:5000.
 
-The database schema is created automatically. To load sample records, open a second terminal in the same folder and run:
-
+To load demo data for the risk register, use a second terminal:
 ```powershell
 python -c "import app; app.seed()"
 ```
 
-Seed IDs use INSERT OR IGNORE, so repeating the seed command will not duplicate demo rows.
+Then select **Company Analysis** in the navigation to upload an annual report.
 
-## Risk score bands
-Low 1–4; Moderate 5–9; High 10–16; Critical 17–25. These are illustrative thresholds.
+## Financial formulas
+- Current ratio = Current assets / Current liabilities
+- Quick ratio = (Current assets − Inventory) / Current liabilities
+- Working capital = Current assets − Current liabilities
+- Net profit margin = Net profit / Revenue × 100
+- Debt-to-equity = Total debt / Equity
+
+Ratios should be compared across years and with industry peers; simple rules are not investment advice.
 
 ## Database design
-The five tables separate departments, risk categories, risks, mitigation controls and audit events. Foreign keys prevent orphan rows; CHECK constraints restrict valid scores/statuses; the generated score column avoids inconsistent manually entered scores. Indexes help common filters, and each mutation plus its audit event is committed or rolled back together.
+The original risk tables remain. Financial analysis adds:
+- `companies`: one row per company
+- `financial_periods`: one row per company/year/unit
+- `financial_values`: one row per item per period
 
-This is an educational MVP, not a production security system. Before production, add authentication and authorization, configure a strong secret key, disable debug mode, and implement backups.
+The composite primary key on financial_values prevents duplicate item codes per period. CHECK constraints limit accepted financial items and non-negative values. SQLite transactions save a company's period and all validated values together.

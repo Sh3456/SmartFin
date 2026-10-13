@@ -60,3 +60,45 @@ SELECT d.department_id, d.department_name,
 FROM departments d
 LEFT JOIN risks r ON r.department_id = d.department_id AND r.status <> 'Closed'
 GROUP BY d.department_id, d.department_name;
+
+ 
+-- Company financial analysis (separate from the operational risk register)
+CREATE TABLE IF NOT EXISTS companies (
+    company_id INTEGER PRIMARY KEY,
+    company_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS financial_periods (
+    period_id INTEGER PRIMARY KEY,
+    company_id INTEGER NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
+    fiscal_year TEXT NOT NULL,
+    unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR')),
+    source_filename TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(company_id, fiscal_year)
+);
+
+CREATE TABLE IF NOT EXISTS financial_values (
+    period_id INTEGER NOT NULL REFERENCES financial_periods(period_id) ON DELETE CASCADE,
+    item_code TEXT NOT NULL CHECK (item_code IN
+        ('CURRENT_ASSETS','CURRENT_LIABILITIES','INVENTORY','REVENUE','NET_PROFIT','TOTAL_DEBT','EQUITY','OPERATING_CASH_FLOW')),
+    item_value REAL NOT NULL CHECK (item_value >= 0),
+    PRIMARY KEY(period_id, item_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_financial_periods_company_year
+    ON financial_periods(company_id, fiscal_year);
+CREATE INDEX IF NOT EXISTS idx_financial_values_item
+    ON financial_values(item_code, period_id);
+
+CREATE VIEW IF NOT EXISTS v_company_liquidity AS
+SELECT c.company_name, p.fiscal_year, p.unit,
+       MAX(CASE WHEN v.item_code='CURRENT_ASSETS' THEN v.item_value END) AS current_assets,
+       MAX(CASE WHEN v.item_code='CURRENT_LIABILITIES' THEN v.item_value END) AS current_liabilities,
+       MAX(CASE WHEN v.item_code='INVENTORY' THEN v.item_value END) AS inventory,
+       CASE WHEN MAX(CASE WHEN v.item_code='CURRENT_LIABILITIES' THEN v.item_value END) > 0
+         THEN ROUND(MAX(CASE WHEN v.item_code='CURRENT_ASSETS' THEN v.item_value END) /
+           MAX(CASE WHEN v.item_code='CURRENT_LIABILITIES' THEN v.item_value END), 2) END AS current_ratio
+FROM companies c JOIN financial_periods p USING(company_id)
+LEFT JOIN financial_values v USING(period_id)
+GROUP BY c.company_id, c.company_name, p.period_id, p.fiscal_year, p.unit;

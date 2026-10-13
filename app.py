@@ -51,7 +51,7 @@ label{font-weight:bold;font-size:13px}.cols{display:grid;grid-template-columns:r
 .badge{border-radius:12px;padding:4px 8px;background:#e2e8f0}.Critical{background:#fee2e2;color:#991b1b}.High{background:#ffedd5;color:#9a3412}.Moderate{background:#fef3c7;color:#92400e}.Low{background:#dcfce7;color:#166534}
 .flash{background:#dcfce7;padding:12px;border-radius:6px;margin:10px 0}.muted{color:#64748b;font-size:13px}
 </style></head><body><header><h1>Corporate Risk Manager</h1><div>Risk register • Mitigation tracking • Audit history</div></header><main>
-<nav><a class="btn" href="/">Dashboard</a><a class="btn" href="/risks">Risk Register</a><a class="btn" href="/risks/new">Add Risk</a><a class="btn" href="/controls">Controls</a><a class="btn" href="/audit">Audit Log</a></nav>
+<nav><a class="btn" href="/">Dashboard</a><a class="btn" href="/risks">Risk Register</a><a class="btn" href="/risks/new">Add Risk</a><a class="btn" href="/controls">Controls</a><a class="btn" href="/audit">Audit Log</a><a class="btn" href="/company-analysis">Company Analysis</a></nav>
 {% for m in get_flashed_messages() %}<div class="flash">{{m}}</div>{% endfor %}{{body|safe}}</main></body></html>
 """
 def page(body, **ctx):
@@ -182,6 +182,198 @@ def audit():
       ORDER BY a.changed_at DESC,a.audit_id DESC LIMIT 200""")
     return page("""<section><h2>Audit history</h2><table><tr><th>When</th><th>Risk</th><th>Action</th><th>Details</th></tr>
     {% for a in data %}<tr><td>{{a.changed_at}}</td><td>{{a.title or 'Deleted risk'}}</td><td>{{a.action}}</td><td>{{a.details}}</td></tr>{% else %}<tr><td colspan="4">No changes recorded.</td></tr>{% endfor %}</table></section>""",data=data)
+
+
+# ---------------- Company financial analysis ----------------
+import re
+from pypdf import PdfReader
+from werkzeug.utils import secure_filename
+
+UPLOAD_DIR = ROOT / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED_FINANCIAL_ITEMS = {
+    "CURRENT_ASSETS": "Current assets",
+    "CURRENT_LIABILITIES": "Current liabilities",
+    "INVENTORY": "Inventory",
+    "REVENUE": "Revenue",
+    "NET_PROFIT": "Net profit",
+    "TOTAL_DEBT": "Total debt",
+    "EQUITY": "Total equity",
+    "OPERATING_CASH_FLOW": "Operating cash flow",
+}
+
+def extract_pdf_text(path):
+    reader = PdfReader(str(path))
+    return "\n".join((page.extract_text() or "") for page in reader.pages)
+
+def _number_from_line(line):
+    # Supports Indian comma grouping and parentheses for negative values.
+    match = re.search(r"\(?-?\d[\d,]*(?:\.\d+)?\)?", line)
+    if not match:
+        return None
+    raw = match.group(0).replace(",", "")
+    if raw.startswith("(") and raw.endswith(")"):
+        raw = "-" + raw[1:-1]
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+def extract_financial_items(text):
+    # Candidate extraction is intentionally conservative and always requires review.
+    patterns = {
+        "CURRENT_ASSETS": [r"total current assets", r"current assets"],
+        "CURRENT_LIABILITIES": [r"total current liabilities", r"current liabilities"],
+        "INVENTORY": [r"inventories", r"inventory"],
+        "REVENUE": [r"revenue from operations", r"total revenue", r"revenue"],
+        "NET_PROFIT": [r"profit for the year", r"net profit", r"profit after tax"],
+        "TOTAL_DEBT": [r"total borrowings", r"total debt", r"borrowings"],
+        "EQUITY": [r"total equity", r"equity attributable", r"total shareholders.? equity"],
+        "OPERATING_CASH_FLOW": [r"net cash from operating activities", r"net cash generated from operating activities", r"cash flow from operating activities"],
+    }
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines() if line.strip()]
+    found = {}
+    for code, aliases in patterns.items():
+        for line in lines:
+            lower = line.lower()
+            if any(re.search(r"\b" + alias + r"\b", lower) for alias in aliases):
+                value = _number_from_line(line)
+                if value is not None and value >= 0:
+                    found[code] = value
+                    break
+    return found
+
+@app.route("/company-analysis", methods=["GET", "POST"])
+def company_analysis():
+    if request.method == "POST":
+        uploaded = request.files.get("report")
+        company_name = request.form.get("company_name", "").strip()
+        fiscal_year = request.form.get("fiscal_year", "").strip()
+        if not company_name or not fiscal_year:
+            flash("Enter a company name and financial year.")
+            return redirect(url_for("company_analysis"))
+        if not uploaded or not uploaded.filename.lower().endswith(".pdf"):
+            flash("Please upload an annual report PDF.")
+            return redirect(url_for("company_analysis"))
+        try:
+            safe_name = secure_filename(uploaded.filename)
+            if not safe_name:
+                raise ValueError("Invalid filename")
+            stored_name = f"{__import__('uuid').uuid4().hex}_{safe_name}"
+            file_path = UPLOAD_DIR / stored_name
+            uploaded.save(file_path)
+            text = extract_pdf_text(file_path)
+            values = extract_financial_items(text)
+            if not values:
+                file_path.unlink(missing_ok=True)
+                flash("No supported figures could be extracted. This PDF may be scanned or use a different layout.")
+                return redirect(url_for("company_analysis"))
+            return page("""
+            <section><h2>Review extracted figures</h2>
+            <p>Company: <b>{{company}}</b> | Financial year: <b>{{year}}</b></p>
+            <p class="muted">PDF text extraction can select the wrong number or reporting column. Verify each figure against the report before saving. Values should use the same unit, preferably INR crore.</p>
+            <form method="post" action="/company-analysis/save">
+            <input type="hidden" name="company_name" value="{{company}}">
+            <input type="hidden" name="fiscal_year" value="{{year}}">
+            <input type="hidden" name="source_filename" value="{{filename}}">
+            <div class="cols">{% for code,label in items %}<div><label>{{label}}{% if code in values %} (extracted){% endif %}</label>
+            <input type="number" step="0.01" min="0" name="{{code}}" value="{{values.get(code, '')}}" placeholder="Verify and enter value"></div>{% endfor %}</div>
+            <label>Unit</label><select name="unit"><option value="INR crore">INR crore</option><option value="INR lakh">INR lakh</option><option value="INR">INR</option></select>
+            <button>Validate and save figures</button></form></section>
+            """, company=company_name, year=fiscal_year, filename=stored_name, items=list(ALLOWED_FINANCIAL_ITEMS.items()), values=values)
+        except Exception as exc:
+            flash("Could not read this PDF. Try a text-based PDF and check that it is not password-protected.")
+            return redirect(url_for("company_analysis"))
+    companies = query("""SELECT c.company_name, p.fiscal_year, p.period_id, p.unit,
+        COUNT(v.item_code) AS item_count FROM financial_periods p
+        JOIN companies c USING(company_id) LEFT JOIN financial_values v USING(period_id)
+        GROUP BY p.period_id ORDER BY c.company_name, p.fiscal_year DESC""")
+    return page("""
+    <section><h2>Company Financial Analysis</h2>
+    <p>Upload an annual report PDF. SmartFin will suggest a few financial figures for you to verify before they are saved.</p>
+    <form method="post" enctype="multipart/form-data">
+    <label>Company name</label><input name="company_name" required placeholder="e.g. Tata Consultancy Services">
+    <label>Financial year</label><input name="fiscal_year" required placeholder="e.g. FY2026">
+    <label>Annual report PDF</label><input type="file" name="report" accept=".pdf,application/pdf" required>
+    <button>Upload and extract figures</button></form></section>
+    <section><h2>Saved company periods</h2><table><tr><th>Company</th><th>Year</th><th>Unit</th><th>Figures saved</th><th>Report</th></tr>
+    {% for p in periods %}<tr><td>{{p.company_name}}</td><td>{{p.fiscal_year}}</td><td>{{p.unit}}</td><td>{{p.item_count}}</td><td><a href="/company-analysis/{{p.period_id}}">Analyze</a></td></tr>
+    {% else %}<tr><td colspan="5">No company financial data saved yet.</td></tr>{% endfor %}</table></section>
+    """, periods=companies)
+
+@app.post("/company-analysis/save")
+def save_company_financials():
+    company = request.form.get("company_name", "").strip()
+    year = request.form.get("fiscal_year", "").strip()
+    unit = request.form.get("unit", "INR crore")
+    filename = request.form.get("source_filename", "").strip()
+    if not company or not year:
+        flash("Company and financial year are required.")
+        return redirect(url_for("company_analysis"))
+    values = {}
+    try:
+        for code in ALLOWED_FINANCIAL_ITEMS:
+            raw = request.form.get(code, "").strip()
+            if raw:
+                number = float(raw)
+                if number < 0:
+                    raise ValueError("Negative values need separate review.")
+                values[code] = number
+        if not values:
+            raise ValueError("At least one financial figure is required.")
+        if "CURRENT_ASSETS" in values and "CURRENT_LIABILITIES" in values and values["CURRENT_LIABILITIES"] == 0:
+            raise ValueError("Current liabilities must be greater than zero.")
+        with db() as con:
+            con.execute("INSERT INTO companies(company_name) VALUES(?) ON CONFLICT(company_name) DO NOTHING", (company,))
+            company_id = con.execute("SELECT company_id FROM companies WHERE company_name=?", (company,)).fetchone()[0]
+            con.execute("""INSERT INTO financial_periods(company_id,fiscal_year,unit,source_filename)
+                VALUES(?,?,?,?) ON CONFLICT(company_id,fiscal_year) DO UPDATE SET unit=excluded.unit,source_filename=excluded.source_filename""",
+                (company_id, year, unit, filename))
+            period_id = con.execute("SELECT period_id FROM financial_periods WHERE company_id=? AND fiscal_year=?", (company_id, year)).fetchone()[0]
+            for code, value in values.items():
+                con.execute("""INSERT INTO financial_values(period_id,item_code,item_value) VALUES(?,?,?)
+                    ON CONFLICT(period_id,item_code) DO UPDATE SET item_value=excluded.item_value""", (period_id, code, value))
+        flash("Verified financial figures saved.")
+        return redirect(url_for("company_analysis_detail", period_id=period_id))
+    except (ValueError, sqlite3.IntegrityError):
+        flash("Please enter valid non-negative figures and ensure current liabilities are not zero.")
+        return redirect(url_for("company_analysis"))
+
+@app.get("/company-analysis/<int:period_id>")
+def company_analysis_detail(period_id):
+    periods = query("""SELECT p.*,c.company_name FROM financial_periods p JOIN companies c USING(company_id)
+        WHERE p.period_id=?""", (period_id,))
+    if not periods:
+        return "Financial period not found", 404
+    p = periods[0]
+    data = {r["item_code"]: r["item_value"] for r in query("SELECT item_code,item_value FROM financial_values WHERE period_id=?", (period_id,))}
+    current_ratio = data.get("CURRENT_ASSETS") / data.get("CURRENT_LIABILITIES") if data.get("CURRENT_ASSETS") is not None and data.get("CURRENT_LIABILITIES") else None
+    quick_ratio = (data["CURRENT_ASSETS"] - data.get("INVENTORY", 0)) / data["CURRENT_LIABILITIES"] if data.get("CURRENT_ASSETS") is not None and data.get("CURRENT_LIABILITIES") else None
+    working_capital = data["CURRENT_ASSETS"] - data["CURRENT_LIABILITIES"] if data.get("CURRENT_ASSETS") is not None and data.get("CURRENT_LIABILITIES") is not None else None
+    net_margin = data["NET_PROFIT"] / data["REVENUE"] * 100 if data.get("NET_PROFIT") is not None and data.get("REVENUE") else None
+    debt_equity = data["TOTAL_DEBT"] / data["EQUITY"] if data.get("TOTAL_DEBT") is not None and data.get("EQUITY") else None
+    warnings = []
+    if current_ratio is not None:
+        if current_ratio < 1: warnings.append("Current ratio below 1: current liabilities exceed current assets.")
+        elif current_ratio < 1.5: warnings.append("Current ratio is relatively low; compare with industry norms.")
+        else: warnings.append("Current assets cover current liabilities based on the supplied figures.")
+    if working_capital is not None and working_capital < 0:
+        warnings.append("Negative working capital: review short-term liquidity.")
+    return page("""
+    <section><h2>{{p.company_name}} — {{p.fiscal_year}}</h2><p class="muted">Unit: {{p.unit}}. Ratios depend on the accuracy and comparability of the uploaded figures.</p>
+    <div class="grid">
+    <div class="card"><div class="muted">Current ratio</div><div class="num">{{'%.2f'|format(cr) if cr is not none else 'N/A'}}</div></div>
+    <div class="card"><div class="muted">Quick ratio</div><div class="num">{{'%.2f'|format(qr) if qr is not none else 'N/A'}}</div></div>
+    <div class="card"><div class="muted">Working capital</div><div class="num">{{'%.2f'|format(wc) if wc is not none else 'N/A'}}</div></div>
+    <div class="card"><div class="muted">Net profit margin</div><div class="num">{{('%.2f%%'|format(margin)) if margin is not none else 'N/A'}}</div></div>
+    <div class="card"><div class="muted">Debt-to-equity</div><div class="num">{{'%.2f'|format(de) if de is not none else 'N/A'}}</div></div></div>
+    <h3>Saved financial figures</h3><table><tr><th>Item</th><th>Value</th><th>Unit</th></tr>
+    {% for code,label in items %}{% if code in values %}<tr><td>{{label}}</td><td>{{'%.2f'|format(values[code])}}</td><td>{{p.unit}}</td></tr>{% endif %}{% endfor %}</table></section>
+    <section><h2>Rule-based observations</h2>{% for w in warnings %}<p>• {{w}}</p>{% else %}<p>Enter current assets and current liabilities to generate liquidity observations.</p>{% endfor %}
+    <p class="muted">These are simple indicators, not investment advice. Compare multiple years and industry peers before drawing conclusions.</p>
+    <a class="btn" href="/company-analysis">Back to company analysis</a></section>
+    """, p=p, cr=current_ratio, qr=quick_ratio, wc=working_capital, margin=net_margin, de=debt_equity, values=data, items=list(ALLOWED_FINANCIAL_ITEMS.items()), warnings=warnings)
+
 
 if __name__=="__main__":
     initialize()
