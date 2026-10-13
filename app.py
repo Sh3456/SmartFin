@@ -263,6 +263,7 @@ def company_analysis():
             file_path = UPLOAD_DIR / stored_name
             uploaded.save(file_path)
             text = extract_pdf_text(file_path)
+            file_path.unlink(missing_ok=True)
             values = extract_financial_items(text)
             if not values:
                 file_path.unlink(missing_ok=True)
