@@ -130,7 +130,7 @@ def login():
         session["user_email"] = user["email"]
         target = request.form.get("next", "").strip()
         # Only permit a local absolute path to prevent external redirects.
-        if target.startswith("/") and not target.startswith("//") and "\\\\" not in target:
+        if target.startswith("/") and not target.startswith("//") and chr(92) not in target:
             return redirect(target)
         return redirect(url_for("home"))
     return render_template_string(AUTH_PAGE, mode="login", next_url=next_url)
@@ -206,7 +206,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #3f3f46;back
 <aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">S</span><span>SmartFin</span></a>
 <div><div class="nav-label">Workspace</div><nav class="nav"><a href="/" class="{% if request.path == '/' %}active{% endif %}"><span class="nav-icon">▦</span>Dashboard</a><a href="/company-analysis" class="{% if request.path.startswith('/company-analysis') %}active{% endif %}"><span class="nav-icon">◫</span>Company Analysis</a></nav></div>
 <div class="sidebar-bottom"><strong>Financial Intelligence</strong><span>Annual reports · Ratios · Trends</span></div></aside>
-<main class="main"><div class="topbar"><div><div class="crumb">SmartFin <span style="color:#52525b">/</span> {% if request.path.startswith('/company-analysis') %}Company Analysis{% else %}Dashboard{% endif %}</div></div><div class="top-actions"><span class="muted">{{ session.get("user_name", "Financial workspace") }}</span><span class="avatar">{{ session.get("user_name", "S")[:1]|upper }}</span><form class="logout-form" method="post" action="{{ url_for(\'logout\') }}"><button class="secondary" type="submit">Sign out</button></form></div></div>
+<main class="main"><div class="topbar"><div><div class="crumb">SmartFin <span style="color:#52525b">/</span> {% if request.path.startswith('/company-analysis') %}Company Analysis{% else %}Dashboard{% endif %}</div></div><div class="top-actions"><span class="muted">{{ session.get("user_name", "Financial workspace") }}</span><span class="avatar">{{ session.get("user_name", "S")[:1]|upper }}</span><form class="logout-form" method="post" action="{{ url_for('logout') }}"><button class="secondary" type="submit">Sign out</button></form></div></div>
 {% for m in get_flashed_messages() %}<div class="flash">{{m}}</div>{% endfor %}{{body|safe}}</main></div></body></html>
 """
 
