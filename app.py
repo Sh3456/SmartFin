@@ -38,44 +38,83 @@ def band(score):
     return "Critical" if score >= 17 else "High" if score >= 10 else "Moderate" if score >= 5 else "Low"
 
 BASE = """
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Corporate Risk Manager</title><style>
-body{font:15px Arial;margin:0;background:#f3f6fb;color:#1c2940}header{background:#172944;color:white;padding:22px calc((100% - 1100px)/2);padding-left:max(20px,calc((100% - 1100px)/2));padding-right:20px}
-main{max-width:1100px;margin:24px auto;padding:0 16px}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-a.btn,button{display:inline-block;background:#2459a9;color:white;padding:10px 13px;border:0;border-radius:6px;text-decoration:none;cursor:pointer}
-section,.card{background:white;border:1px solid #e0e7f0;border-radius:9px;padding:16px;margin:14px 0;overflow:auto}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.num{font-size:27px;font-weight:bold;margin-top:8px}
-table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e8edf4;padding:10px 7px}th{font-size:12px;color:#65738a;text-transform:uppercase}
-input,select,textarea{width:100%;padding:9px;border:1px solid #bdc8d8;border-radius:5px;margin:5px 0 12px;box-sizing:border-box}
-label{font-weight:bold;font-size:13px}.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-.badge{border-radius:12px;padding:4px 8px;background:#e2e8f0}.Critical{background:#fee2e2;color:#991b1b}.High{background:#ffedd5;color:#9a3412}.Moderate{background:#fef3c7;color:#92400e}.Low{background:#dcfce7;color:#166534}
-.flash{background:#dcfce7;padding:12px;border-radius:6px;margin:10px 0}.muted{color:#64748b;font-size:13px}
-</style></head><body><header><h1>Corporate Risk Manager</h1><div>Risk register • Mitigation tracking • Audit history</div></header><main>
-<nav><a class="btn" href="/">Dashboard</a><a class="btn" href="/risks">Risk Register</a><a class="btn" href="/risks/new">Add Risk</a><a class="btn" href="/controls">Controls</a><a class="btn" href="/audit">Audit Log</a><a class="btn" href="/company-analysis">Company Analysis</a></nav>
-{% for m in get_flashed_messages() %}<div class="flash">{{m}}</div>{% endfor %}{{body|safe}}</main></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SmartFin — Financial Intelligence</title>
+<style>
+:root{color-scheme:dark;--bg:#09090b;--panel:#111113;--panel2:#18181b;--line:#29292e;--text:#f4f4f5;--muted:#a1a1aa;--blue:#4f46e5;--green:#55c38e;--purple:#a855f7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:inherit;text-decoration:none}button,.btn{border:1px solid transparent;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;font:inherit;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn.secondary,button.secondary{background:var(--panel2);border-color:var(--line)}.btn:hover,button:hover{filter:brightness(1.12)}
+.app{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:238px;background:#0c0c0e;border-right:1px solid var(--line);padding:25px 16px;display:flex;flex-direction:column;gap:28px;z-index:5}
+.brand{display:flex;align-items:center;gap:11px;padding:0 8px;font-size:19px;font-weight:750;letter-spacing:-.6px}.brand-mark{width:35px;height:35px;border-radius:11px;background:linear-gradient(140deg,#4f46e5,#8b5cf6);display:grid;place-items:center;font-weight:800}
+.nav-label{color:#71717a;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:0 10px;margin-bottom:6px}.nav{display:grid;gap:6px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;color:#a1a1aa;font-weight:550}.nav a.active,.nav a:hover{background:#202027;color:white}.nav a.active{box-shadow:inset 2px 0 #818cf8}.nav-icon{width:20px;text-align:center;font-size:16px}
+.sidebar-bottom{margin-top:auto;border:1px solid var(--line);background:#121214;border-radius:12px;padding:14px}.sidebar-bottom strong{display:block;font-size:12px}.sidebar-bottom span{font-size:11px;color:var(--muted)}
+.main{margin-left:238px;padding:28px clamp(18px,3vw,46px) 48px;max-width:1700px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:10px}.avatar{width:35px;height:35px;border-radius:50%;background:#27272a;display:grid;place-items:center;border:1px solid #3f3f46}.eyebrow{color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase}
+h1{font-size:clamp(25px,3vw,34px);letter-spacing:-1.2px;margin:5px 0 6px;line-height:1.2}h2{font-size:17px;letter-spacing:-.3px;margin:0 0 5px}h3{font-size:14px;margin:0 0 12px}.sub{color:var(--muted);margin:0}.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:25px}.head-actions{display:flex;gap:9px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card,section{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;min-width:0;margin:0 0 16px;overflow:auto}.metric-label{color:var(--muted);font-size:12px}.num{font-size:clamp(23px,2.3vw,31px);font-weight:750;letter-spacing:-1px;margin:10px 0 7px}.metric-foot{font-size:11px;color:var(--muted)}.metric-icon{float:right;width:34px;height:34px;border-radius:10px;background:#202027;display:grid;place-items:center;color:#a5b4fc}
+.content-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:16px;margin-top:3px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.section-head p{margin:3px 0 0;color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;min-width:520px}td,th{text-align:left;border-bottom:1px solid #27272a;padding:12px 9px;font-size:12px}td{color:#e4e4e7}th{font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.8px;font-weight:650}tr:last-child td{border-bottom:0}
+.badge{display:inline-flex;align-items:center;border-radius:99px;padding:4px 8px;background:#27272a;color:#d4d4d8;font-size:10px;font-weight:700}.badge.good{background:#123326;color:#86efac}.badge.warn{background:#3b2b12;color:#fcd34d}.badge.info{background:#24245a;color:#c7d2fe}.badge.bad{background:#431b24;color:#fda4af}
+.chart{height:180px;display:flex;align-items:flex-end;gap:clamp(9px,2vw,22px);padding:15px 8px 0;border-bottom:1px solid #34343a;background:repeating-linear-gradient(to bottom,transparent 0,transparent 43px,#222228 44px)}.bar-group{height:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:9px;min-width:0}.bar{width:min(28px,65%);min-height:5px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#6366f1,#4338ca)}.bar.green{background:linear-gradient(180deg,#6ee7b7,#16a34a)}.bar-label{font-size:10px;color:var(--muted)}
+.snapshot{display:grid;gap:14px}.snapshot-row{display:flex;align-items:flex-start;gap:11px}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-top:6px;flex-shrink:0}.dot.amber{background:#fbbf24}.snapshot-row strong{display:block;font-size:12px}.snapshot-row span{font-size:11px;color:var(--muted)}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #3f3f46;background:#0c0c0e;color:var(--text);border-radius:8px;margin:6px 0 14px;font:inherit}input[type=file]{padding:9px}label{font-weight:600;font-size:12px;color:#d4d4d8}.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.muted{color:var(--muted);font-size:12px}.flash{background:#123326;color:#bbf7d0;border:1px solid #166534;padding:12px 14px;border-radius:9px;margin:0 0 16px}.empty{padding:24px;text-align:center;color:var(--muted);font-size:12px}.form-section{max-width:920px}.divider{height:1px;background:var(--line);margin:18px 0}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid{grid-template-columns:1fr}.sidebar{width:205px}.main{margin-left:205px}}
+@media(max-width:650px){.sidebar{position:sticky;top:0;width:100%;height:auto;padding:12px 14px;gap:12px;border-right:0;border-bottom:1px solid var(--line)}.brand{font-size:16px}.nav-label,.sidebar-bottom{display:none}.nav{display:flex;gap:6px}.nav a{flex:1;justify-content:center;padding:9px 8px;font-size:12px}.main{margin:0;padding:20px 14px}.topbar{margin-bottom:22px}.page-head{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card,section{padding:15px;border-radius:12px}.num{font-size:23px}.top-actions .btn{padding:8px 10px}}
+@media(max-width:390px){.grid{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
+</style></head><body><div class="app">
+<aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">S</span><span>SmartFin</span></a>
+<div><div class="nav-label">Workspace</div><nav class="nav"><a href="/" class="{% if request.path == '/' %}active{% endif %}"><span class="nav-icon">▦</span>Dashboard</a><a href="/company-analysis" class="{% if request.path.startswith('/company-analysis') %}active{% endif %}"><span class="nav-icon">◫</span>Company Analysis</a></nav></div>
+<div class="sidebar-bottom"><strong>Financial Intelligence</strong><span>Annual reports · Ratios · Trends</span></div></aside>
+<main class="main"><div class="topbar"><div><div class="crumb">SmartFin <span style="color:#52525b">/</span> {% if request.path.startswith('/company-analysis') %}Company Analysis{% else %}Dashboard{% endif %}</div></div><div class="top-actions"><span class="muted">Financial workspace</span><span class="avatar">S</span></div></div>
+{% for m in get_flashed_messages() %}<div class="flash">{{m}}</div>{% endfor %}{{body|safe}}</main></div></body></html>
 """
+
 def page(body, **ctx):
     return render_template_string(BASE, body=render_template_string(body, **ctx))
 
 @app.get("/")
 def home():
-    counts=query("""SELECT COUNT(*) total,
-      SUM(CASE WHEN status!='Closed' THEN 1 ELSE 0 END) active,
-      SUM(CASE WHEN status!='Closed' AND risk_score>=17 THEN 1 ELSE 0 END) critical FROM risks""")[0]
-    controls=query("SELECT COUNT(*) total,SUM(status='Completed') done FROM mitigation_controls")[0]
-    depts=query("SELECT * FROM v_department_risk_exposure ORDER BY total_risk_exposure DESC")
-    top=query("""SELECT r.*,d.department_name FROM risks r JOIN departments d USING(department_id)
-      WHERE status!='Closed' ORDER BY risk_score DESC LIMIT 5""")
-    return page("""<div class="grid">
-    <div class="card"><div class="muted">All risks</div><div class="num">{{c.total or 0}}</div></div>
-    <div class="card"><div class="muted">Active risks</div><div class="num">{{c.active or 0}}</div></div>
-    <div class="card"><div class="muted">Critical active</div><div class="num">{{c.critical or 0}}</div></div>
-    <div class="card"><div class="muted">Controls completed</div><div class="num">{{k.done or 0}} / {{k.total or 0}}</div></div></div>
-    <section><h2>Department exposure</h2><table><tr><th>Department</th><th>Risks</th><th>Total exposure</th><th>Critical</th></tr>
-    {% for d in depts %}<tr><td>{{d.department_name}}</td><td>{{d.risk_count}}</td><td>{{d.total_risk_exposure}}</td><td>{{d.critical_risks or 0}}</td></tr>{% endfor %}</table></section>
-    <section><h2>Top risks</h2><table><tr><th>Risk</th><th>Department</th><th>Score</th><th>Rating</th><th>Status</th></tr>
-    {% for r in top %}<tr><td><a href="/risks/{{r.risk_id}}">{{r.title}}</a></td><td>{{r.department_name}}</td><td>{{r.risk_score}}</td><td><span class="badge {{band(r.risk_score)}}">{{band(r.risk_score)}}</span></td><td>{{r.status}}</td></tr>{% else %}<tr><td colspan="5">No risks. Load demo data or add a risk.</td></tr>{% endfor %}</table></section>""",c=counts,k=controls,depts=depts,top=top,band=band)
-
+    periods = query("""SELECT p.period_id,p.fiscal_year,p.unit,c.company_name,
+        COUNT(v.item_code) AS item_count
+        FROM financial_periods p JOIN companies c USING(company_id)
+        LEFT JOIN financial_values v USING(period_id)
+        GROUP BY p.period_id ORDER BY p.period_id DESC""")
+    latest = periods[0] if periods else None
+    data = {}
+    if latest:
+        data = {r["item_code"]: r["item_value"] for r in query(
+            "SELECT item_code,item_value FROM financial_values WHERE period_id=?", (latest["period_id"],))}
+    ca = data.get("CURRENT_ASSETS")
+    cl = data.get("CURRENT_LIABILITIES")
+    inventory = data.get("INVENTORY", 0)
+    current_ratio = ca / cl if ca is not None and cl else None
+    quick_ratio = (ca - inventory) / cl if ca is not None and cl else None
+    working_capital = ca - cl if ca is not None and cl is not None else None
+    revenue = data.get("REVENUE")
+    net_profit = data.get("NET_PROFIT")
+    margin = net_profit / revenue * 100 if net_profit is not None and revenue else None
+    periods_by_year = sorted(periods, key=lambda p: p["fiscal_year"])[-6:]
+    return page("""<div class="page-head"><div><div class="eyebrow">Financial intelligence</div><h1>Financial Overview</h1>
+      <p class="sub">A clear view of company performance, liquidity and financial trends.</p></div>
+      <div class="head-actions"><a class="btn secondary" href="/company-analysis">View analyses</a><a class="btn" href="/company-analysis">＋ Upload annual report</a></div></div>
+      {% if latest %}<div class="muted" style="margin:-10px 0 16px">Latest analysis · <b style="color:#e4e4e7">{{latest.company_name}}</b> · {{latest.fiscal_year}} · {{latest.unit}}</div>{% endif %}
+      <div class="grid">
+      <div class="card"><span class="metric-icon">▤</span><div class="metric-label">Current assets</div><div class="num">{{"%.2f"|format(ca) if ca is not none else "—"}}</div><div class="metric-foot">{{latest.unit if latest else "Upload a report to begin"}}</div></div>
+      <div class="card"><span class="metric-icon">↘</span><div class="metric-label">Current liabilities</div><div class="num">{{"%.2f"|format(cl) if cl is not none else "—"}}</div><div class="metric-foot">{{latest.unit if latest else "No financial data yet"}}</div></div>
+      <div class="card"><span class="metric-icon">◉</span><div class="metric-label">Current ratio</div><div class="num">{{"%.2f"|format(cr) if cr is not none else "—"}}<span style="font-size:13px;color:#a1a1aa;font-weight:500">x</span></div><div class="metric-foot">Current assets ÷ current liabilities</div></div>
+      <div class="card"><span class="metric-icon">＋</span><div class="metric-label">Working capital</div><div class="num">{{"%.2f"|format(wc) if wc is not none else "—"}}</div><div class="metric-foot">{{latest.unit if latest else "Current assets − liabilities"}}</div></div></div>
+      <div class="content-grid"><section><div class="section-head"><div><h2>Financial periods</h2><p>Saved company reports and extraction progress</p></div><span class="badge info">{{periods|length}} periods</span></div>
+      <table><tr><th>Company</th><th>Financial year</th><th>Figures</th><th>Status</th><th></th></tr>
+      {% for p in periods[:6] %}<tr><td><strong>{{p.company_name}}</strong></td><td>{{p.fiscal_year}}</td><td>{{p.item_count}} items</td><td><span class="badge good">Saved</span></td><td><a href="/company-analysis/{{p.period_id}}" style="color:#a5b4fc">Analyze ↗</a></td></tr>{% else %}<tr><td colspan="5"><div class="empty">No financial periods yet. Upload an annual report to start your first analysis.</div></td></tr>{% endfor %}</table></section>
+      <section><div class="section-head"><div><h2>Financial health snapshot</h2><p>Rule-based observations from the latest report</p></div></div>
+      <div class="snapshot">{% if cr is not none %}<div class="snapshot-row"><span class="dot {{'amber' if cr < 1.5 else ''}}"></span><div><strong>Liquidity coverage · {{'%.2f'|format(cr)}}x</strong><span>{% if cr < 1 %}Current liabilities exceed current assets. Review short-term liquidity.{% elif cr < 1.5 %}Compare short-term coverage with the company’s industry and history.{% else %}Current assets cover current liabilities based on the saved figures.{% endif %}</span></div></div>{% else %}<div class="snapshot-row"><span class="dot amber"></span><div><strong>Liquidity analysis pending</strong><span>Save current assets and current liabilities to calculate coverage.</span></div></div>{% endif %}
+      {% if margin is not none %}<div class="snapshot-row"><span class="dot"></span><div><strong>Net profit margin · {{'%.2f'|format(margin)}}%</strong><span>Net profit as a percentage of revenue for the latest saved period.</span></div></div>{% else %}<div class="snapshot-row"><span class="dot amber"></span><div><strong>Profitability data pending</strong><span>Revenue and net profit are needed to calculate margin.</span></div></div>{% endif %}
+      <div class="snapshot-row"><span class="dot"></span><div><strong>Figures are reviewable</strong><span>Check units and statement scope before using the results.</span></div></div></div>
+      <div class="divider"></div><a class="btn secondary" href="/company-analysis">Open Company Analysis →</a></section></div>
+      <section style="margin-top:1px"><div class="section-head"><div><h2>Quick start</h2><p>Three steps from annual report to financial insight</p></div></div><div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div><div class="eyebrow">01 · Upload</div><h3 style="margin-top:8px">Choose a company report</h3><p class="muted">Add the company name, financial year and annual report PDF.</p></div>
+      <div><div class="eyebrow">02 · Verify</div><h3 style="margin-top:8px">Review extracted values</h3><p class="muted">Confirm financial labels, units and year columns before saving.</p></div>
+      <div><div class="eyebrow">03 · Analyze</div><h3 style="margin-top:8px">Explore the ratios</h3><p class="muted">Calculate liquidity, working capital and profitability indicators.</p></div></div></section>
+      """, latest=latest, periods=periods, ca=ca, cl=cl, cr=current_ratio, qr=quick_ratio, wc=working_capital, margin=margin)
 @app.get("/risks")
 def risks():
     status=request.args.get("status",""); dept=request.args.get("department",""); q=request.args.get("q","").strip()
