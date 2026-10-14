@@ -1,5 +1,15 @@
 PRAGMA foreign_keys = ON;
 
+-- SmartFin user accounts. Passwords are stored as Werkzeug password hashes.
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    full_name TEXT NOT NULL CHECK (length(trim(full_name)) BETWEEN 1 AND 100),
+    email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+
 CREATE TABLE IF NOT EXISTS departments (
     department_id INTEGER PRIMARY KEY,
     department_name TEXT NOT NULL UNIQUE,
