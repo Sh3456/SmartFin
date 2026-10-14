@@ -18,6 +18,20 @@ A beginner-friendly Flask and SQLite project combining a corporate risk register
 
 **Important:** PDF extraction is heuristic, not guaranteed. Check each suggested value against the annual report, especially the correct year, standalone/consolidated statement and unit. Scanned PDFs may require OCR, which is not included. This MVP stores the uploaded filename and values, but does not retain the PDF itself after extraction.
 
+## Authentication
+- New users can create an account at `/signup`; existing users sign in at `/login`.
+- Passwords are stored as Werkzeug password hashes, not as plain text.
+- Dashboard and Company Analysis routes require a signed-in session. Use **Sign out** in the top bar to end the session.
+- The `users` table is created automatically by `schema.sql` when the app initializes.
+
+For local development, the app generates a temporary session key if `SMARTFIN_SECRET_KEY` is not set. Before deployment, configure a persistent secret key in the environment and enable secure cookies when serving over HTTPS:
+```powershell
+$env:SMARTFIN_SECRET_KEY = "replace-with-a-long-random-secret"
+$env:SMARTFIN_COOKIE_SECURE = "true"
+python app.py
+```
+Keep the secret private. The example value above is only a placeholder.
+
 ## Run on Windows
 Python 3.10+ required.
 
