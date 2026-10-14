@@ -1,12 +1,19 @@
 from contextlib import contextmanager
 from pathlib import Path
+import os
+import secrets
 import sqlite3
-from flask import Flask, flash, redirect, render_template_string, request, url_for
+from flask import Flask, flash, redirect, render_template_string, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 ROOT = Path(__file__).resolve().parent
 DB_FILE = ROOT / "corporate_risk.db"
 app = Flask(__name__)
-app.secret_key = "development-key-change-before-deployment"
+# Set SMARTFIN_SECRET_KEY to a persistent random value before deploying.
+app.secret_key = os.environ.get("SMARTFIN_SECRET_KEY") or secrets.token_hex(32)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SMARTFIN_COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
 
 @contextmanager
 def db():
@@ -37,6 +44,141 @@ def query(sql, args=()):
 def band(score):
     return "Critical" if score >= 17 else "High" if score >= 10 else "Moderate" if score >= 5 else "Low"
 
+AUTH_PAGE = """
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% if mode == 'login' %}Sign in{% else %}Create account{% endif %} · SmartFin</title>
+<style>
+:root{color-scheme:dark;--bg:#09090b;--panel:#111113;--line:#29292e;--text:#f4f4f5;--muted:#a1a1aa;--blue:#4f46e5;--purple:#a855f7}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 10%,#1c1b43 0,transparent 38%),var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:inherit;text-decoration:none}.layout{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(380px,.95fr);max-width:1440px;margin:auto}.story{padding:clamp(28px,6vw,84px);display:flex;flex-direction:column;justify-content:space-between;min-height:100vh}.brand{display:flex;gap:12px;align-items:center;font-size:21px;font-weight:800;letter-spacing:-.5px}.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4f46e5,#a855f7);display:grid;place-items:center}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:500;letter-spacing:0;margin-top:-2px}.story-copy{max-width:520px;padding:48px 0}.eyebrow{color:#a5b4fc;text-transform:uppercase;font-weight:800;font-size:11px;letter-spacing:1.5px}.story h1{font-size:clamp(34px,4vw,57px);line-height:1.08;letter-spacing:-2.2px;margin:16px 0}.story p{color:#a1a1aa;font-size:15px;max-width:460px;line-height:1.8}.feature{display:flex;gap:13px;align-items:flex-start;border-top:1px solid #282831;padding:17px 0}.feature-icon{width:38px;height:38px;border:1px solid #30304a;background:#17172a;border-radius:11px;display:grid;place-items:center;color:#c4b5fd;font-size:17px;flex-shrink:0}.feature strong{display:block;font-size:13px}.feature span{color:var(--muted);font-size:12px}
+.form-side{display:grid;place-items:center;padding:28px;background:linear-gradient(145deg,rgba(255,255,255,.025),transparent 55%);border-left:1px solid #222229}.form-card{width:min(100%,420px);padding:clamp(22px,4vw,38px);background:rgba(17,17,19,.94);border:1px solid #303036;border-radius:20px;box-shadow:0 24px 90px #0005}.form-card h2{font-size:27px;letter-spacing:-.8px;margin:7px 0 6px}.muted{color:var(--muted);font-size:13px}.form-card label{display:block;font-size:12px;color:#e4e4e7;font-weight:650;margin-top:17px}.form-card input{display:block;width:100%;margin-top:7px;padding:12px 13px;border:1px solid #3f3f46;border-radius:9px;background:#0b0b0d;color:#fff;font:inherit;outline:none}.form-card input:focus{border-color:#818cf8;box-shadow:0 0 0 3px #4f46e526}.submit{width:100%;margin-top:23px;padding:12px 15px;border:0;border-radius:9px;background:linear-gradient(100deg,#4f46e5,#6d4ce8);color:#fff;font:inherit;font-weight:750;cursor:pointer}.submit:hover{filter:brightness(1.1)}.switch{text-align:center;color:var(--muted);font-size:12px;margin:22px 0 0}.switch a{color:#c4b5fd;font-weight:700}.flash{padding:11px 12px;border:1px solid #854d0e;background:#422006;color:#fde68a;border-radius:9px;margin:16px 0 4px;font-size:12px}.flash.error{border-color:#7f1d1d;background:#3b1117;color:#fecaca}.flash.success{border-color:#166534;background:#123326;color:#bbf7d0}.secure-note{display:flex;align-items:center;gap:8px;color:#71717a;font-size:11px;margin-top:24px;justify-content:center}
+@media(max-width:820px){.layout{grid-template-columns:1fr}.story{min-height:auto;padding:24px 24px 8px}.story-copy{padding:36px 0 16px}.story h1{font-size:35px}.feature-list{display:none}.form-side{border-left:0;padding:12px 20px 32px}.form-card{max-width:480px}.story p{font-size:13px}}
+@media(max-width:420px){.story{padding:22px 18px 0}.form-side{padding:12px 14px 24px}.form-card{padding:24px 20px}.story h1{font-size:31px}}
+</style>
+</head>
+<body><div class="layout">
+<section class="story">
+  <a class="brand" href="{{ url_for('login') }}"><span class="brand-mark">S</span><span>SmartFin<small>Financial intelligence, made clear</small></span></a>
+  <div class="story-copy"><div class="eyebrow">Company financial analysis</div><h1>Understand the numbers. Make clearer decisions.</h1><p>Review annual-report figures and turn verified financial data into useful liquidity and performance insights.</p>
+    <div class="feature-list">
+      <div class="feature"><span class="feature-icon">↗</span><div><strong>One clear dashboard</strong><span>See your latest financial indicators in one place.</span></div></div>
+      <div class="feature"><span class="feature-icon">▤</span><div><strong>PDF-to-insight workflow</strong><span>Upload, verify extracted figures, then calculate ratios.</span></div></div>
+      <div class="feature"><span class="feature-icon">✓</span><div><strong>You stay in control</strong><span>Review values before they become saved financial data.</span></div></div>
+    </div>
+  </div>
+  <div class="muted">SmartFin · Financial statement analyzer</div>
+</section>
+<section class="form-side"><div class="form-card">
+  <div class="eyebrow">{% if mode == 'login' %}Welcome back{% else %}Get started{% endif %}</div>
+  <h2>{% if mode == 'login' %}Sign in to SmartFin{% else %}Create your account{% endif %}</h2>
+  <p class="muted">{% if mode == 'login' %}Enter your account details to continue to your workspace.{% else %}Create an account to save and review your company analyses.{% endif %}</p>
+  {% for category, message in get_flashed_messages(with_categories=true) %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+  {% if mode == 'login' %}
+  <form method="post" action="{{ url_for('login') }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="username" maxlength="254" placeholder="you@company.com" required autofocus>
+    <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+    <button class="submit" type="submit">Sign in →</button>
+  </form>
+  <p class="switch">New to SmartFin? <a href="{{ url_for('signup') }}">Create an account</a></p>
+  {% else %}
+  <form method="post" action="{{ url_for('signup') }}">
+    <label for="full_name">Full name</label><input id="full_name" name="full_name" autocomplete="name" maxlength="100" placeholder="Your name" required autofocus>
+    <label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@company.com" required>
+    <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required>
+    <label for="confirm_password">Confirm password</label><input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" placeholder="Re-enter your password" required>
+    <button class="submit" type="submit">Create account →</button>
+  </form>
+  <p class="switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+  {% endif %}
+  <div class="secure-note">▣ &nbsp; Passwords are stored as secure hashes</div>
+</div></section>
+</div></body></html>
+"""
+
+@app.before_request
+def require_login():
+    # Only authentication pages are public. Keep every workspace endpoint private.
+    if request.endpoint is None or request.endpoint in {"login", "signup", "logout", "static"}:
+        return None
+    if not session.get("user_id"):
+        return redirect(url_for("login", next=request.path))
+
+@app.get("/login")
+@app.post("/login")
+def login():
+    if session.get("user_id"):
+        return redirect(url_for("home"))
+    next_url = request.args.get("next", "")
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        user_rows = query(
+            "SELECT user_id, full_name, email, password_hash FROM users WHERE email = ?",
+            (email,),
+        ) if email else []
+        if not user_rows or not check_password_hash(user_rows[0]["password_hash"], password):
+            flash("Email or password is incorrect.", "error")
+            return redirect(url_for("login"))
+        user = user_rows[0]
+        session.clear()
+        session["user_id"] = user["user_id"]
+        session["user_name"] = user["full_name"]
+        session["user_email"] = user["email"]
+        target = request.form.get("next", "").strip()
+        # Only permit a local absolute path to prevent external redirects.
+        if target.startswith("/") and not target.startswith("//") and "\\\\" not in target:
+            return redirect(target)
+        return redirect(url_for("home"))
+    return render_template_string(AUTH_PAGE, mode="login", next_url=next_url)
+
+@app.get("/signup")
+@app.post("/signup")
+def signup():
+    if session.get("user_id"):
+        return redirect(url_for("home"))
+    if request.method == "POST":
+        full_name = " ".join(request.form.get("full_name", "").split())
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        if not full_name or len(full_name) > 100 or "@" not in email or len(email) > 254:
+            flash("Enter a valid name and email address.", "error")
+            return redirect(url_for("signup"))
+        if len(password) < 8:
+            flash("Choose a password with at least 8 characters.", "error")
+            return redirect(url_for("signup"))
+        if password != confirm_password:
+            flash("The passwords do not match.", "error")
+            return redirect(url_for("signup"))
+        try:
+            with db() as con:
+                con.execute(
+                    "INSERT INTO users(full_name, email, password_hash) VALUES (?, ?, ?)",
+                    (full_name, email, generate_password_hash(password)),
+                )
+                user_id = con.execute("SELECT user_id FROM users WHERE email = ?", (email,)).fetchone()["user_id"]
+            session.clear()
+            session["user_id"] = user_id
+            session["user_name"] = full_name
+            session["user_email"] = email
+            flash("Your account is ready. Welcome to SmartFin!", "success")
+            return redirect(url_for("home"))
+        except sqlite3.IntegrityError:
+            flash("An account with that email already exists. Please sign in.", "error")
+            return redirect(url_for("signup"))
+    return render_template_string(AUTH_PAGE, mode="signup", next_url="")
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    flash("You have been signed out.", "success")
+    return redirect(url_for("login"))
+
+
 BASE = """
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SmartFin — Financial Intelligence</title>
@@ -48,7 +190,7 @@ a{color:inherit;text-decoration:none}button,.btn{border:1px solid transparent;bo
 .brand{display:flex;align-items:center;gap:11px;padding:0 8px;font-size:19px;font-weight:750;letter-spacing:-.6px}.brand-mark{width:35px;height:35px;border-radius:11px;background:linear-gradient(140deg,#4f46e5,#8b5cf6);display:grid;place-items:center;font-weight:800}
 .nav-label{color:#71717a;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;padding:0 10px;margin-bottom:6px}.nav{display:grid;gap:6px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;color:#a1a1aa;font-weight:550}.nav a.active,.nav a:hover{background:#202027;color:white}.nav a.active{box-shadow:inset 2px 0 #818cf8}.nav-icon{width:20px;text-align:center;font-size:16px}
 .sidebar-bottom{margin-top:auto;border:1px solid var(--line);background:#121214;border-radius:12px;padding:14px}.sidebar-bottom strong{display:block;font-size:12px}.sidebar-bottom span{font-size:11px;color:var(--muted)}
-.main{margin-left:238px;padding:28px clamp(18px,3vw,46px) 48px;max-width:1700px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:10px}.avatar{width:35px;height:35px;border-radius:50%;background:#27272a;display:grid;place-items:center;border:1px solid #3f3f46}.eyebrow{color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase}
+.main{margin-left:238px;padding:28px clamp(18px,3vw,46px) 48px;max-width:1700px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:10px}.logout-form{margin:0}.logout-form button{padding:8px 11px;font-size:12px;background:var(--panel2);border-color:var(--line)}.avatar{width:35px;height:35px;border-radius:50%;background:#27272a;display:grid;place-items:center;border:1px solid #3f3f46}.eyebrow{color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase}
 h1{font-size:clamp(25px,3vw,34px);letter-spacing:-1.2px;margin:5px 0 6px;line-height:1.2}h2{font-size:17px;letter-spacing:-.3px;margin:0 0 5px}h3{font-size:14px;margin:0 0 12px}.sub{color:var(--muted);margin:0}.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:25px}.head-actions{display:flex;gap:9px;flex-wrap:wrap}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card,section{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;min-width:0;margin:0 0 16px;overflow:auto}.metric-label{color:var(--muted);font-size:12px}.num{font-size:clamp(23px,2.3vw,31px);font-weight:750;letter-spacing:-1px;margin:10px 0 7px}.metric-foot{font-size:11px;color:var(--muted)}.metric-icon{float:right;width:34px;height:34px;border-radius:10px;background:#202027;display:grid;place-items:center;color:#a5b4fc}
 .content-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:16px;margin-top:3px}.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.section-head p{margin:3px 0 0;color:var(--muted);font-size:12px}
@@ -64,7 +206,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #3f3f46;back
 <aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">S</span><span>SmartFin</span></a>
 <div><div class="nav-label">Workspace</div><nav class="nav"><a href="/" class="{% if request.path == '/' %}active{% endif %}"><span class="nav-icon">▦</span>Dashboard</a><a href="/company-analysis" class="{% if request.path.startswith('/company-analysis') %}active{% endif %}"><span class="nav-icon">◫</span>Company Analysis</a></nav></div>
 <div class="sidebar-bottom"><strong>Financial Intelligence</strong><span>Annual reports · Ratios · Trends</span></div></aside>
-<main class="main"><div class="topbar"><div><div class="crumb">SmartFin <span style="color:#52525b">/</span> {% if request.path.startswith('/company-analysis') %}Company Analysis{% else %}Dashboard{% endif %}</div></div><div class="top-actions"><span class="muted">Financial workspace</span><span class="avatar">S</span></div></div>
+<main class="main"><div class="topbar"><div><div class="crumb">SmartFin <span style="color:#52525b">/</span> {% if request.path.startswith('/company-analysis') %}Company Analysis{% else %}Dashboard{% endif %}</div></div><div class="top-actions"><span class="muted">{{ session.get("user_name", "Financial workspace") }}</span><span class="avatar">{{ session.get("user_name", "S")[:1]|upper }}</span><form class="logout-form" method="post" action="{{ url_for(\'logout\') }}"><button class="secondary" type="submit">Sign out</button></form></div></div>
 {% for m in get_flashed_messages() %}<div class="flash">{{m}}</div>{% endfor %}{{body|safe}}</main></div></body></html>
 """
 
