@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS financial_periods (
     fiscal_year TEXT NOT NULL,
     unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR')),
     source_filename TEXT,
+    statement_scope TEXT NOT NULL DEFAULT 'CONSOLIDATED'
+        CHECK (statement_scope IN ('STANDALONE','CONSOLIDATED')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(company_id, fiscal_year)
 );
@@ -92,7 +94,17 @@ CREATE TABLE IF NOT EXISTS financial_values (
     period_id INTEGER NOT NULL REFERENCES financial_periods(period_id) ON DELETE CASCADE,
     item_code TEXT NOT NULL CHECK (item_code IN
         ('CURRENT_ASSETS','CURRENT_LIABILITIES','INVENTORY','REVENUE','NET_PROFIT','TOTAL_DEBT','EQUITY','OPERATING_CASH_FLOW')),
-    item_value REAL NOT NULL CHECK (item_value >= 0),
+    item_value REAL NOT NULL CHECK (
+        item_value >= 0 OR item_code IN ('NET_PROFIT','OPERATING_CASH_FLOW')
+    ),
+    source_page INTEGER CHECK (source_page IS NULL OR source_page > 0),
+    source_label TEXT,
+    source_snippet TEXT,
+    extraction_confidence REAL CHECK (
+        extraction_confidence IS NULL OR extraction_confidence BETWEEN 0 AND 1
+    ),
+    validation_status TEXT NOT NULL DEFAULT 'MANUAL_REVIEWED'
+        CHECK (validation_status IN ('VALIDATED','MANUAL_REVIEWED')),
     PRIMARY KEY(period_id, item_code)
 );
 
