@@ -428,6 +428,7 @@ def audit():
 
 # ---------------- Company financial analysis ----------------
 import math
+import re
 from financial_extractor import extract_financial_items as extract_financial_candidates
 from werkzeug.utils import secure_filename
 
