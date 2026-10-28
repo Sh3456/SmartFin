@@ -5,7 +5,6 @@ Use the synthetic/demo data repository that inspired the project: [Fintech-Risk-
 CSV files:
 - [customers.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/customers.csv)
 - [devices.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/devices.csv)
-- [locations.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/locations.csv)
 - [merchants.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/merchants.csv)
 - [transactions.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/transactions.csv)
 - [chargebacks.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/chargebacks.csv)
