@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS financial_periods (
     statement_scope TEXT NOT NULL DEFAULT 'CONSOLIDATED'
         CHECK (statement_scope IN ('STANDALONE','CONSOLIDATED')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(company_id, fiscal_year)
+    UNIQUE(company_id, fiscal_year, statement_scope)
 );
 
 CREATE TABLE IF NOT EXISTS financial_values (
