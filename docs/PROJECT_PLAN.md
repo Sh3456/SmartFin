@@ -1,24 +1,20 @@
-# SmartFin Project Plan — SQL First
+# SmartFin Project Plan — Fintech Fraud Analytics
 
-The goal is a small DBMS project: analyze one TCS annual report, review extracted values, save approved values to Oracle, and calculate three liquidity metrics. The UI is only a way to use the database.
+## Goal
+Build an SQL-first fintech risk analytics warehouse in Oracle. Import synthetic payment data and use SQL to identify suspicious transaction behavior and measure merchant chargeback exposure.
 
 ## Milestones
 
-1. **Oracle schema:** run `oracle/01_schema.sql` in Oracle SQL Developer. It creates the five financial tables, integrity constraints, indexes, and the liquidity view.
-2. **Standard financial items:** run `oracle/02_seed_financial_items.sql` to create the small label dictionary.
-3. **Learn and test SQL:** run `oracle/03_analysis_queries.sql` to inspect periods, review pending extraction candidates, query approved values, and calculate ratios.
-4. **Validation with PL/SQL:** run `oracle/04_validate_and_save.sql`. Review a candidate before calling `VALIDATE_AND_SAVE_FINANCIAL_VALUE` to promote it into `FINANCIAL_VALUE`.
-5. **Python-to-Oracle integration:** configure Oracle connection credentials locally; make the PDF extractor insert candidates into `RAW_FINANCIAL_DATA` and make the review page call the validation procedure.
-6. **Connect the small UI:** use Oracle-backed queries for the Dashboard and Company Analysis sections only.
+1. Create the seven-table schema using `oracle/01_schema.sql`.
+2. Import CSV data following `oracle/02_import_data.md`, loading parent tables before dependent tables.
+3. Run core SQL: approval rates, declined transactions, KYC status, VPN/proxy trends, chargeback losses, and merchant chargeback rates.
+4. Demonstrate advanced SQL with CTEs, conditional aggregation, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, and rolling windows.
+5. Optionally generate High Velocity and Device Farming alerts with `oracle/04_generate_fraud_alerts.sql`.
+6. Validate results, check row counts, and document false positives and limits.
+7. Only after SQL works, replace the old financial-statement UI with a small fraud dashboard backed by Oracle.
+
+## Tables
+`LOCATIONS`, `DEVICES`, `CUSTOMERS`, `MERCHANTS`, `TRANSACTIONS`, `CHARGEBACKS`, `FRAUD_ALERTS`.
 
 ## Scope boundaries
-
-- Keep the core workflow to one TCS annual report for the first milestone.
-- Metrics: current ratio, quick ratio, and working capital.
-- Quick ratio for this project is defined as (current assets - inventory) / current liabilities.
-- Every extracted value must be checked for label, fiscal year, statement scope (standalone/consolidated), and units before approval.
-- No machine learning, RAG, LLM, forecasting, or complex dashboard work.
-
-## Current status
-
-The Oracle schema and SQL/PLSQL scripts are in `oracle/`. The Flask web prototype still uses SQLite; milestone 5 is required before the website actually reads and writes Oracle data. The Oracle scripts should be run and tested in an Oracle environment; they have not been executed against the user's database from this repository-editing session.
+No machine learning, RAG/LLM, forecasting, or complicated frontend. Thresholds are illustrative and alerts require human review.
