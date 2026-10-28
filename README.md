@@ -9,14 +9,14 @@ A beginner-friendly Flask and SQLite project combining a corporate risk register
 - Constraints, foreign keys, indexes, transactions and reporting view
 
 ### Company financial analysis
-- Upload a text-based annual report PDF
-- Extract suggested values for current assets, current liabilities, inventory, revenue, net profit, total debt, equity and operating cash flow
-- Review/edit extracted values before saving
-- Store companies, financial periods and standardized financial items in normalized tables
+- Upload a text-based annual report PDF and select the statement scope
+- Extract table-aware candidate values for current assets, current liabilities, inventory, revenue, net profit, total debt, equity and operating cash flow
+- Review the matched label, source page, evidence row, method, and confidence before saving
+- Store companies, financial periods, standardized financial items, and extraction provenance in SQLite
 - Calculate current ratio, quick ratio, working capital, net profit margin and debt-to-equity
 - Display basic rule-based liquidity observations
 
-**Important:** PDF extraction is heuristic, not guaranteed. Check each suggested value against the annual report, especially the correct year, standalone/consolidated statement and unit. Scanned PDFs may require OCR, which is not included. This MVP stores the uploaded filename and values, but does not retain the PDF itself after extraction.
+**Important:** The extractor is conservative, evidence-first, and not guaranteed. It ranks table/text-row candidates, attempts to align values with the requested fiscal-year column, and shows the original snippet, page, detected scope, method and confidence. The form pre-fills only stronger candidates; all saved values still require user review. Always check the year column, standalone/consolidated scope and unit against the PDF. Scanned PDFs may require OCR, which is not included. The app stores the uploaded filename and per-value provenance, but deletes the temporary PDF after extraction.
 
 ## Authentication
 - New users can create an account at `/signup`; existing users sign in at `/login`.
