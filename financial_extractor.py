@@ -156,7 +156,7 @@ def _target_year(fiscal_year: str) -> int | None:
     if period:
         end = period.group(2)
         return int(end) if len(end) == 4 else int(period.group(1)[:2] + end)
-    years = re.findall(r"\b20\d{2}\b", value)
+    years = re.findall(r"(?<!\d)(20\d{2})(?!\d)", value)
     return int(years[-1]) if years else None
 
 
