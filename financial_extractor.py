@@ -112,7 +112,7 @@ def _match_alias(row_text: str, code: str) -> tuple[str | None, int]:
     return None, -1
 
 
-def _parse_amount(token: str) -> float | None:
+def _parse_amount(token: str, allow_negative: bool = False) -> float | None:
     token = (token or "").strip()
     if not token or token.casefold() in {"nil", "—", "–", "-"}:
         return None
@@ -124,14 +124,12 @@ def _parse_amount(token: str) -> float | None:
         return None
     if negative:
         result = -abs(result)
-    # The current UI/database stores non-negative values only. Reject negatives
-    # until the schema and its validation rules are updated together.
-    if result < 0:
+    if result < 0 and not allow_negative:
         return None
     return result
 
 
-def _amounts_after(text: str, alias: str) -> list[float]:
+def _amounts_after(text: str, alias: str, allow_negative: bool = False) -> list[float]:
     normalized = _clean_row_start(text)
     # Remove note references such as '(Note 12)' before reading numbers.
     normalized = NOTE_PAREN_RE.sub(" ", normalized)
@@ -146,7 +144,7 @@ def _amounts_after(text: str, alias: str) -> list[float]:
     tail = re.sub(r"\bnotes?\s+\d+\b", " ", tail, flags=re.I)
     results = []
     for item in AMOUNT_RE.finditer(tail):
-        value = _parse_amount(item.group(0))
+        value = _parse_amount(item.group(0), allow_negative=allow_negative)
         if value is not None:
             results.append(value)
     return results
@@ -169,6 +167,7 @@ def _years_in_header(cell: str) -> set[int]:
     if period:
         end = period.group(2)
         result.add(int(end) if len(end) == 4 else int(period.group(1)[:2] + end))
+        return result
     # Dates such as 'As at 31 March 2026' resolve to 2026.
     for year in re.findall(r"\b20\d{2}\b", text):
         result.add(int(year))
@@ -344,17 +343,17 @@ def extract_financial_items(
                         None,
                     ) if target_year else None
                     if target_col is not None and target_col < len(row) and target_col > label_col:
-                        selected_value = _parse_amount(row[target_col])
+                        selected_value = _parse_amount(row[target_col], allow_negative=code in {"NET_PROFIT", "OPERATING_CASH_FLOW"})
                         year_confirmed = selected_value is not None
                     if selected_value is None:
                         for cell in row[label_col + 1:]:
-                            value = _parse_amount(cell)
+                            value = _parse_amount(cell, allow_negative=code in {"NET_PROFIT", "OPERATING_CASH_FLOW"})
                             if value is not None:
                                 amount_cells.append(value)
                         if amount_cells:
                             selected_value = amount_cells[0]
                     if selected_value is None:
-                        amount_cells = _amounts_after(row_text, alias)
+                        amount_cells = _amounts_after(row_text, alias, allow_negative=code in {"NET_PROFIT", "OPERATING_CASH_FLOW"})
                         if amount_cells:
                             selected_value = amount_cells[0]
                     if selected_value is None:
@@ -383,7 +382,7 @@ def extract_financial_items(
                 alias, _ = _match_alias(line, code)
                 if not alias:
                     continue
-                amounts = _amounts_after(line, alias)
+                amounts = _amounts_after(line, alias, allow_negative=code in {"NET_PROFIT", "OPERATING_CASH_FLOW"})
                 if not amounts:
                     continue
                 # If the row carries several years, this method cannot safely
