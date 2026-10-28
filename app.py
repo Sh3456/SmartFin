@@ -105,14 +105,15 @@ def _migrate_financial_periods_unique_scope():
         if not row:
             return
         ddl = re.sub(r"\s+", " ", row["sql"] or "").lower()
-        if "unique(company_id, fiscal_year, statement_scope)" in ddl:
+        if ("unique(company_id, fiscal_year, statement_scope)" in ddl
+                and "'inr million'" in ddl):
             return
         con.execute("BEGIN")
         con.execute("""CREATE TABLE financial_periods_new (
             period_id INTEGER PRIMARY KEY,
             company_id INTEGER NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
             fiscal_year TEXT NOT NULL,
-            unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR')),
+            unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR million','INR')),
             source_filename TEXT,
             statement_scope TEXT NOT NULL DEFAULT 'CONSOLIDATED'
                 CHECK (statement_scope IN ('STANDALONE','CONSOLIDATED')),
@@ -530,7 +531,7 @@ def company_analysis():
                 <input id="{{code}}" type="number" step="any" name="{{code}}" value="{{values.get(code, '')}}" placeholder="Verify and enter value">
                 {% if ev %}
                   <p class="muted">Candidate: <b>{{"%.2f"|format(ev.value)}}</b> · page {{ev.page}} · confidence {{(ev.confidence * 100)|round|int}}%</p>
-                  {% if code not in values %}<p class="muted">Not auto-filled because evidence confidence is low. Verify before entering.</p>{% endif %}
+                  {% if code not in values %}<p class="muted">Not auto-filled because year/scope alignment is unconfirmed or candidates conflict. Verify before entering.</p>{% endif %}
                   <details><summary>View extraction evidence</summary>
                     <p class="muted">Matched label: {{ev.label}} · method: {{ev.method}} · detected page scope: {{ev.scope_seen}}</p>
                     <pre class="evidence">{{ev.snippet}}</pre>
@@ -551,6 +552,7 @@ def company_analysis():
             <select name="unit">
               <option value="INR crore" {% if meta.unit_hint == 'INR crore' %}selected{% endif %}>INR crore</option>
               <option value="INR lakh" {% if meta.unit_hint == 'INR lakh' %}selected{% endif %}>INR lakh</option>
+              <option value="INR million" {% if meta.unit_hint == 'INR million' %}selected{% endif %}>INR million</option>
               <option value="INR" {% if meta.unit_hint == 'INR' %}selected{% endif %}>INR</option>
             </select>
             <button>Validate and save figures</button>
@@ -599,7 +601,7 @@ def save_company_financials():
     if not company or not year or scope not in {"STANDALONE", "CONSOLIDATED"}:
         flash("Company, year and valid statement scope are required.")
         return redirect(url_for("company_analysis"))
-    if unit not in {"INR crore", "INR lakh", "INR"}:
+    if unit not in {"INR crore", "INR lakh", "INR million", "INR"}:
         flash("Select a supported reporting unit.")
         return redirect(url_for("company_analysis"))
 
