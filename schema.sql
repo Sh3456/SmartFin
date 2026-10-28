@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS financial_periods (
     period_id INTEGER PRIMARY KEY,
     company_id INTEGER NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
     fiscal_year TEXT NOT NULL,
-    unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR')),
+    unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR million','INR')),
     source_filename TEXT,
     statement_scope TEXT NOT NULL DEFAULT 'CONSOLIDATED'
         CHECK (statement_scope IN ('STANDALONE','CONSOLIDATED')),
