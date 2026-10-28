@@ -47,6 +47,52 @@ def initialize():
             if column not in value_columns:
                 con.execute(f"ALTER TABLE financial_values ADD COLUMN {column} {definition}")
         con.execute("CREATE INDEX IF NOT EXISTS idx_financial_values_item ON financial_values(item_code, period_id)")
+    _migrate_financial_values_allow_losses()
+
+
+def _migrate_financial_values_allow_losses():
+    """Rebuild the old financial_values table when it rejected losses/cash outflows."""
+    con = sqlite3.connect(DB_FILE, timeout=10)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys=OFF")
+    try:
+        row = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='financial_values'").fetchone()
+        if not row:
+            return
+        ddl = re.sub(r"\\s+", " ", row["sql"] or "").lower()
+        if "item_value >= 0" not in ddl or "or item_code in ('net_profit','operating_cash_flow')" in ddl:
+            return
+        con.execute("BEGIN")
+        con.execute("""CREATE TABLE financial_values_new (
+            period_id INTEGER NOT NULL REFERENCES financial_periods(period_id) ON DELETE CASCADE,
+            item_code TEXT NOT NULL CHECK (item_code IN
+                ('CURRENT_ASSETS','CURRENT_LIABILITIES','INVENTORY','REVENUE','NET_PROFIT','TOTAL_DEBT','EQUITY','OPERATING_CASH_FLOW')),
+            item_value REAL NOT NULL CHECK (
+                item_value >= 0 OR item_code IN ('NET_PROFIT','OPERATING_CASH_FLOW')
+            ),
+            source_page INTEGER CHECK (source_page IS NULL OR source_page > 0),
+            source_label TEXT,
+            source_snippet TEXT,
+            extraction_confidence REAL CHECK (
+                extraction_confidence IS NULL OR extraction_confidence BETWEEN 0 AND 1
+            ),
+            validation_status TEXT NOT NULL DEFAULT 'MANUAL_REVIEWED'
+                CHECK (validation_status IN ('VALIDATED','MANUAL_REVIEWED')),
+            PRIMARY KEY(period_id, item_code)
+        )""")
+        con.execute("""INSERT INTO financial_values_new
+            (period_id,item_code,item_value,source_page,source_label,source_snippet,extraction_confidence,validation_status)
+            SELECT period_id,item_code,item_value,source_page,source_label,source_snippet,extraction_confidence,validation_status
+            FROM financial_values""")
+        con.execute("DROP TABLE financial_values")
+        con.execute("ALTER TABLE financial_values_new RENAME TO financial_values")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_financial_values_item ON financial_values(item_code, period_id)")
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
 
 def seed():
     with db() as con:
@@ -448,6 +494,8 @@ def company_analysis():
                     <p class="muted">Matched label: {{ev.label}} · method: {{ev.method}} · detected page scope: {{ev.scope_seen}}</p>
                     <pre class="evidence">{{ev.snippet}}</pre>
                     <p class="muted">{{ev.reason}}</p>
+                    {% if ev.ambiguous %}<p class="muted" style="color:#fcd34d">Ambiguous match: another similarly ranked row has a different value. Verify carefully.</p>{% endif %}
+                    {% if ev.alternatives %}<h4>Other matching rows</h4><ul>{% for alt in ev.alternatives %}<li>Page {{alt.page}} · {{alt.label}} · {{'%.2f'|format(alt.value)}} · confidence {{(alt.confidence*100)|round|int}}%{% if alt.year_confirmed %} · year column matched{% endif %}</li>{% endfor %}</ul>{% endif %}
                   </details>
                   <input type="hidden" name="source_page_{{code}}" value="{{ev.page}}">
                   <input type="hidden" name="source_label_{{code}}" value="{{ev.label}}">
