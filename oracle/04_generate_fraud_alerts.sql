@@ -1,0 +1,50 @@
+-- SmartFin rule-generated alerts — Oracle SQL
+-- Run after loading TRANSACTIONS, DEVICES and the original FRAUD_ALERTS CSV.
+-- Thresholds are illustrative teaching rules, not production fraud standards.
+-- MERGE avoids generating a duplicate for the same transaction/rule pair.
+
+-- Rule 1: High velocity — >= 5 approved transactions in a rolling 10-minute window.
+MERGE INTO FRAUD_ALERTS A
+USING (
+    SELECT TRANSACTION_ID,
+           LEAST(100, 60 + (TX_COUNT_10_MIN - 5) * 5) AS ALERT_RISK_SCORE
+    FROM (
+        SELECT T.TRANSACTION_ID,
+               COUNT(*) OVER (
+                   PARTITION BY T.CUSTOMER_ID
+                   ORDER BY T.TRANSACTION_TIMESTAMP
+                   RANGE BETWEEN NUMTODSINTERVAL(10, 'MINUTE') PRECEDING AND CURRENT ROW
+               ) AS TX_COUNT_10_MIN
+        FROM TRANSACTIONS T
+        WHERE UPPER(T.STATUS) = 'APPROVED'
+    )
+    WHERE TX_COUNT_10_MIN >= 5
+) S
+ON (A.TRANSACTION_ID = S.TRANSACTION_ID AND A.RULE_TRIGGERED = 'High Velocity')
+WHEN NOT MATCHED THEN INSERT
+    (ALERT_ID, TRANSACTION_ID, ALERT_TIMESTAMP, RULE_TRIGGERED, RISK_SCORE, REVIEWER_STATUS, RESOLUTION)
+VALUES
+    ('ALT-' || SUBSTR(RAWTOHEX(SYS_GUID()), 1, 20), S.TRANSACTION_ID, SYSTIMESTAMP,
+     'High Velocity', S.ALERT_RISK_SCORE, 'Unassigned', 'Unresolved');
+
+-- Rule 2: Device farming — one device appears with >= 5 distinct customers.
+MERGE INTO FRAUD_ALERTS A
+USING (
+    SELECT DISTINCT T.TRANSACTION_ID, 75 AS ALERT_RISK_SCORE
+    FROM TRANSACTIONS T
+    JOIN (
+        SELECT DEVICE_ID
+        FROM TRANSACTIONS
+        WHERE DEVICE_ID IS NOT NULL AND CUSTOMER_ID IS NOT NULL
+        GROUP BY DEVICE_ID
+        HAVING COUNT(DISTINCT CUSTOMER_ID) >= 5
+    ) D ON D.DEVICE_ID = T.DEVICE_ID
+) S
+ON (A.TRANSACTION_ID = S.TRANSACTION_ID AND A.RULE_TRIGGERED = 'Device Farming')
+WHEN NOT MATCHED THEN INSERT
+    (ALERT_ID, TRANSACTION_ID, ALERT_TIMESTAMP, RULE_TRIGGERED, RISK_SCORE, REVIEWER_STATUS, RESOLUTION)
+VALUES
+    ('ALT-' || SUBSTR(RAWTOHEX(SYS_GUID()), 1, 20), S.TRANSACTION_ID, SYSTIMESTAMP,
+     'Device Farming', S.ALERT_RISK_SCORE, 'Unassigned', 'Unresolved');
+
+COMMIT;
