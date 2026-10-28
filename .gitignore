@@ -2,7 +2,13 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
-corporate_risk.db
 .env
+*.db
+*.sqlite
+*.sqlite3
+oracle-wallet/
+*.dmp
 
-uploads/
+# Reconstructed from committed parts; keep the parts in version control.
+Datasets/devices.csv
+Datasets/transactions.csv

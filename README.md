@@ -1,11 +1,10 @@
 # SmartFin — Fintech Fraud Analytics
 
-An SQL-first DBMS project focused on analyzing synthetic fintech payment transactions, identifying suspicious patterns, measuring chargeback exposure, and reviewing fraud alerts. The core deliverable is Oracle SQL, not a large frontend.
+**SmartFin is now an Oracle SQL-focused fintech fraud analytics project.** It analyzes synthetic payment transactions, flags suspicious patterns for review, and measures chargeback loss and merchant risk. The primary deliverable is the database and SQL query library, not a large frontend.
 
-## Project idea
+## Data model
 
-Build a relational fraud analytics warehouse inspired by [Fintech-Risk-Analytics](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics). The project uses seven related tables:
-
+Seven related tables:
 - `LOCATIONS`
 - `DEVICES`
 - `CUSTOMERS`
@@ -14,30 +13,27 @@ Build a relational fraud analytics warehouse inspired by [Fintech-Risk-Analytics
 - `CHARGEBACKS`
 - `FRAUD_ALERTS`
 
-## SQL deliverables
+The transaction table is the central fact table; the other tables supply customer, merchant, device, location, dispute, and review context.
 
-- Oracle DDL with primary keys, foreign keys, check constraints, and indexes
-- CSV import instructions and row-count checks
-- Queries for approval rates, decline patterns, KYC, VPN/proxy usage, chargeback losses and merchant risk
-- CTEs, GROUP BY/HAVING, conditional aggregation, window functions (`ROW_NUMBER`, `DENSE_RANK`, `LAG`, rolling windows)
-- Rule-based High Velocity and Device Farming alert generation with Oracle `MERGE`
+## Get started
 
-## Start here
+1. Open [Oracle SQL setup guide](oracle/README.md).
+2. Run [`oracle/01_schema.sql`](oracle/01_schema.sql) in Oracle SQL Developer with **F5 / Run Script**.
+3. Open [`Datasets/README.md`](Datasets/README.md). Some large CSVs are stored as parts; assemble them with `python Datasets/assemble_large_csvs.py`.
+4. Follow [`oracle/02_import_data.md`](oracle/02_import_data.md) to import the seven datasets in foreign-key order.
+5. Run [`oracle/03_analysis_queries.sql`](oracle/03_analysis_queries.sql) a section at a time.
+6. Optionally run [`oracle/04_generate_fraud_alerts.sql`](oracle/04_generate_fraud_alerts.sql) to generate demo High Velocity and Device Farming alerts.
 
-1. Read [Oracle project instructions](oracle/README.md).
-2. Run [schema](oracle/01_schema.sql) in Oracle SQL Developer with F5.
-3. Follow [CSV import guide](oracle/02_import_data.md).
-4. Execute [analysis queries](oracle/03_analysis_queries.sql) section by section.
-5. Try [fraud alert rules](oracle/04_generate_fraud_alerts.sql) after importing the source alert data.
+## SQL skills demonstrated
 
-The CSV dataset linked by the reference repository is synthetic/demo data. The thresholds in this project are for learning and flag patterns for review; they are not proof of fraud.
+Primary/foreign keys, check constraints, indexes, joins, conditional aggregation, `GROUP BY`/`HAVING`, CTEs, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, rolling-window analytics, and `MERGE`.
 
-## Scope
+## Dataset attribution
 
-- SQL and relational database design are the main focus.
-- No machine learning, LLM/RAG, forecasting, or complex web app.
-- Python/frontend integration is a later step once Oracle SQL is working.
+The dataset files are from the [Fintech-Risk-Analytics repository](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/tree/main/Datasets) and are described by the upstream project as simulated/synthetic practice data. Attribution and source links are recorded in [`Datasets/README.md`](Datasets/README.md). An explicit license file was not found in the upstream repository when reviewed; confirm reuse/redistribution rights with the source owner before redistributing this repository publicly.
 
-## Existing prototype
+## Scope and limitations
 
-The current `app.py` is still an older Flask prototype for financial-statement analysis and SQLite. It has not yet been rewritten or connected to Oracle for fraud analytics. Use the `oracle/` SQL project as the current source of truth for the new idea; do not assume the old website is already using the new schema.
+This is a student/learning analytics project. Thresholds are illustrative signals, not proof of fraud; results need review. There is no machine learning, LLM, forecasting, or live transaction blocking.
+
+The old Flask financial-statement application has been removed from this simplified SQL-focused project. Oracle SQL is the project core.

@@ -1,36 +1,29 @@
-# SmartFin — Fintech Fraud Analytics
+# SmartFin — Fintech Fraud Analytics (Oracle SQL)
 
-SmartFin has pivoted from annual-report analysis to a SQL-first fintech fraud analytics warehouse inspired by the objectives and synthetic dataset in [Fintech-Risk-Analytics](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics). This repository contains its own Oracle-compatible schema and queries rather than copying the source project's SQL wholesale.
-
-## Objective
-
-Analyze payment transactions to identify suspicious transaction patterns, measure chargeback loss, understand merchant risk, and prioritize alerts for human review.
-
-## Seven-table model
-
-- `LOCATIONS`: country, region/state, city, ZIP code, and location risk score.
-- `DEVICES`: device/browser/IP details and VPN/proxy indicator.
-- `CUSTOMERS`: profile, account status, KYC state, and primary location.
-- `MERCHANTS`: merchant/category details and current risk tier.
-- `TRANSACTIONS`: central payment fact table.
-- `CHARGEBACKS`: disputed transactions, reasons, amounts, outcomes.
-- `FRAUD_ALERTS`: rule, risk score, review status, and resolution.
+This project analyzes synthetic payment transactions using Oracle SQL. The goal is to demonstrate relational design, joins, aggregation, CTEs, window functions and simple rule-generated alerts.
 
 ## Run order
 
-1. `01_schema.sql`: create the Oracle tables, foreign keys, checks, and indexes.
-2. `02_import_data.md`: download and import CSVs in dependency order.
-3. `03_analysis_queries.sql`: start with basic queries, then work through CTEs and window functions.
-4. `04_generate_fraud_alerts.sql`: optionally add illustrative High Velocity and Device Farming alerts.
+1. Run `01_schema.sql` in Oracle SQL Developer with **F5**.
+2. Rebuild large local CSV files by running `python Datasets/assemble_large_csvs.py` from the repo root.
+3. Follow [`02_import_data.md`](02_import_data.md) to import all seven CSVs in parent-to-child order.
+4. Run `03_analysis_queries.sql` section by section.
+5. Optionally run `04_generate_fraud_alerts.sql` to add High Velocity and Device Farming alerts.
 
-## SQL skills
+## Seven-table schema
 
-Joins, PK/FK constraints, indexes, `GROUP BY`/ `HAVING`, conditional aggregation, CTEs, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, rolling analytic windows, and `MERGE`.
+- `LOCATIONS`: location metadata and a synthetic risk score.
+- `DEVICES`: device/browser/IP attributes and VPN/proxy flag.
+- `CUSTOMERS`: customer profile and KYC flag.
+- `MERCHANTS`: merchant/category metadata and risk tier.
+- `TRANSACTIONS`: central fact table for payments.
+- `CHARGEBACKS`: disputes, reason codes and outcomes.
+- `FRAUD_ALERTS`: generated or imported signals and reviewer resolutions.
 
-## Scope
+## SQL concepts
 
-The database and SQL are the main deliverable. No ML, LLM, forecasting, or live transaction blocking. Rules flag patterns for investigation and do not prove fraud. The source data is synthetic/demo data.
+PK/FK constraints, check constraints, indexes, joins, conditional aggregation, `GROUP BY`/`HAVING`, CTEs, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, rolling analytics, and `MERGE`.
 
-## Current app status
+## Interpretation
 
-The old Flask prototype still contains financial-statement pages and has not yet been rewritten for fraud analytics. The SQL project is the current priority; update the UI and add Oracle connectivity only after the schema, data import, and queries work. No database credentials should be committed to Git.
+Risk scores and thresholds are illustrative academic rules. They should be reviewed and tuned; no single signal should be treated as proof of fraud or used to block a real payment. The source CSVs are attributed in `Datasets/README.md`. The upstream repository did not expose a LICENSE file at the time of review, so confirm redistribution permission before publishing another public copy.

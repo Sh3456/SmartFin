@@ -1,38 +1,45 @@
-# Load the synthetic fraud dataset into Oracle
+# Import SmartFin datasets into Oracle
 
-Use the synthetic/demo data repository that inspired the project: [Fintech-Risk-Analytics](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics).
+The seven CSV datasets are stored in the repository's `Datasets/` folder and attributed to the [Fintech-Risk-Analytics source repository](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/tree/main/Datasets).
 
-CSV files:
-- [customers.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/customers.csv)
-- [devices.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/devices.csv)
-- [merchants.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/merchants.csv)
-- [transactions.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/transactions.csv)
-- [chargebacks.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/chargebacks.csv)
-- [fraud_alerts.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/fraud_alerts.csv)
-- [locations.csv](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics/blob/main/Datasets/locations.csv)
+## 1. Rebuild the two large CSVs
 
-The data contains synthetic names and values for practice, not actual customer records. Download the CSVs to your computer; this repo does not duplicate the large dataset.
+From the SmartFin root folder, run:
 
-## Import sequence
+```powershell
+python Datasets/assemble_large_csvs.py
+```
 
-1. Run `01_schema.sql` in Oracle SQL Developer using **F5 / Run Script**.
-2. In SQL Developer, right-click each target table and choose **Import Data** (or use the import wizard). Select the matching CSV and map columns by name.
-3. Load data in this order to satisfy foreign keys:
-   1. `LOCATIONS` ← `locations.csv`
-   2. `DEVICES` ← `devices.csv`
-   3. `CUSTOMERS` ← `customers.csv`
-   4. `MERCHANTS` ← `merchants.csv`
-   5. `TRANSACTIONS` ← `transactions.csv`
-   6. `CHARGEBACKS` ← `chargebacks.csv`
-   7. `FRAUD_ALERTS` ← `fraud_alerts.csv`
-4. For timestamp columns, set the format to `YYYY-MM-DD HH24:MI:SS`. For `ONBOARDING_DATE`, use `YYYY-MM-DD`.
-5. Keep `IS_VPN_PROXY`, `KYC_VERIFIED`, `CVV_MATCH`, and `AVS_MATCH` as text values such as `True` and `False`.
-6. After importing each CSV, check that the row count is greater than zero before importing child tables.
+This creates `Datasets/devices.csv` and `Datasets/transactions.csv` from the numbered parts. The other five CSV files are already present directly in `Datasets/`.
 
-## Validate row counts
+## 2. Create tables
+
+Open `oracle/01_schema.sql` in Oracle SQL Developer and run it with **F5 / Run Script**. Run it only once for a new schema.
+
+## 3. Import CSVs in this order
+
+Use SQL Developer's table import wizard. Select the CSV and map columns by name to the existing table:
+
+1. `Datasets/locations.csv` → `LOCATIONS`
+2. `Datasets/devices.csv` → `DEVICES`
+3. `Datasets/customers.csv` → `CUSTOMERS`
+4. `Datasets/merchants.csv` → `MERCHANTS`
+5. `Datasets/transactions.csv` → `TRANSACTIONS`
+6. `Datasets/chargebacks.csv` → `CHARGEBACKS`
+7. `Datasets/fraud_alerts.csv` → `FRAUD_ALERTS`
+
+The order matters because foreign keys in child tables refer to rows in parent tables.
+
+## 4. Date and Boolean-like columns
+
+- For timestamp columns, use `YYYY-MM-DD HH24:MI:SS`.
+- For `MERCHANTS.ONBOARDING_DATE`, use `YYYY-MM-DD`.
+- Keep `IS_VPN_PROXY`, `KYC_VERIFIED`, `CVV_MATCH`, and `AVS_MATCH` as text values such as `True` and `False` during import.
+
+## 5. Verify row counts
 
 ```sql
-SELECT 'LOCATIONS' AS TABLE_NAME, COUNT(*) AS ROW_COUNT FROM LOCATIONS
+SELECT 'LOCATIONS' TABLE_NAME, COUNT(*) ROW_COUNT FROM LOCATIONS
 UNION ALL SELECT 'DEVICES', COUNT(*) FROM DEVICES
 UNION ALL SELECT 'CUSTOMERS', COUNT(*) FROM CUSTOMERS
 UNION ALL SELECT 'MERCHANTS', COUNT(*) FROM MERCHANTS
@@ -41,4 +48,6 @@ UNION ALL SELECT 'CHARGEBACKS', COUNT(*) FROM CHARGEBACKS
 UNION ALL SELECT 'FRAUD_ALERTS', COUNT(*) FROM FRAUD_ALERTS;
 ```
 
-For the project, keep the thresholds in the SQL examples clearly labelled as illustrative rules, and describe hits as suspicious patterns requiring human review—not proof of fraud.
+If a foreign-key error occurs, verify that the parent tables were imported first and that IDs match exactly.
+
+The dataset is synthetic/demo data. Fraud-rule hits indicate patterns that deserve investigation; they do not prove fraud.
