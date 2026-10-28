@@ -59,7 +59,7 @@ def _migrate_financial_values_allow_losses():
         row = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='financial_values'").fetchone()
         if not row:
             return
-        ddl = re.sub(r"\\s+", " ", row["sql"] or "").lower()
+        ddl = re.sub(r"\s+", " ", row["sql"] or "").lower()
         if "item_value >= 0" not in ddl or "or item_code in ('net_profit','operating_cash_flow')" in ddl:
             return
         con.execute("BEGIN")
