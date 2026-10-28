@@ -206,6 +206,8 @@ def _unit_hint(document_text: str) -> tuple[str, str]:
     text = _normalize(document_text)
     if re.search(r"(?:₹|rs\.?|inr).{0,25}\b(?:crore|crores|crs?)\b|\b(?:amounts?|figures?)\s+in\s+crores?\b", text):
         return "INR crore", "The PDF appears to state amounts in crore; verify this against the statement heading."
+    if re.search(r"(?:₹|rs\.?|inr).{0,25}\bmillions?\b|\b(?:amounts?|figures?)\s+in\s+millions?\b", text):
+        return "INR million", "The PDF appears to state amounts in million; verify this against the statement heading."
     if re.search(r"(?:₹|rs\.?|inr).{0,25}\blakhs?\b|\b(?:amounts?|figures?)\s+in\s+lakhs?\b", text):
         return "INR lakh", "The PDF appears to state amounts in lakh; verify this against the statement heading."
     return "INR crore", "Unit could not be inferred reliably; the form defaults to INR crore. Check the statement heading."
@@ -372,6 +374,7 @@ def extract_financial_items(
                         "reason": reason,
                         "method": "table",
                         "scope_seen": page_scope_context or "Not detected",
+                        "scope_confirmed": page_scope_context == statement_scope,
                         "year_confirmed": year_confirmed,
                     })
 
@@ -400,6 +403,7 @@ def extract_financial_items(
                     "reason": reason,
                     "method": "text",
                     "scope_seen": page_scope_context or "Not detected",
+                    "scope_confirmed": page_scope_context == statement_scope,
                     "year_confirmed": False,
                 })
 
@@ -428,6 +432,7 @@ def extract_financial_items(
                 "confidence": item["confidence"],
                 "method": item["method"],
                 "year_confirmed": item.get("year_confirmed", False),
+                "scope_confirmed": item.get("scope_confirmed", False),
                 "snippet": item["snippet"],
             }
             for item in options[1:4]
@@ -442,7 +447,8 @@ def extract_financial_items(
         evidence[code] = best
         # Never auto-fill unless the exact fiscal-year column was identified
         # and similarly ranked candidates do not disagree.
-        if best["confidence"] >= 0.75 and best.get("year_confirmed") and not best["ambiguous"]:
+        if (best["confidence"] >= 0.75 and best.get("year_confirmed")
+                and best.get("scope_confirmed") and not best["ambiguous"]):
             values[code] = best["value"]
 
     unit, unit_note = _unit_hint(all_text)
