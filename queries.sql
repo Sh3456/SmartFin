@@ -1,12 +1,5 @@
 -- SmartFin has pivoted to Oracle-based Fintech Fraud Analytics.
--- Run the Oracle query library in:
--- oracle/03_analysis_queries.sql
---
--- Oracle schema:
--- oracle/01_schema.sql
---
--- CSV import instructions:
--- oracle/02_import_data.md
---
--- Rule-generated alerts:
--- oracle/04_generate_fraud_alerts.sql
+-- Main schema: oracle/01_schema.sql
+-- Data import instructions: oracle/02_import_data.md
+-- Analysis query library: oracle/03_analysis_queries.sql
+-- Rule-based alert generation: oracle/04_generate_fraud_alerts.sql
