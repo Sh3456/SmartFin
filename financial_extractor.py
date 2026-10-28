@@ -267,11 +267,11 @@ def _candidate_score(
     if year_confirmed:
         score += 0.18
         reasons.append(f"target year {target_year} found in table header")
-    elif target_year and re.search(rf"\b{target_year}\b", page_text):
-        score += 0.04
-        reasons.append(f"target year {target_year} appears on page, column not confirmed")
+    elif target_year:
+        score -= 0.12
+        reasons.append(f"target year {target_year} column is not confirmed")
     else:
-        reasons.append("year column not confirmed")
+        reasons.append("target year was not supplied")
     return round(max(0.05, min(score, 0.99)), 2), "; ".join(reasons)
 
 
@@ -372,6 +372,7 @@ def extract_financial_items(
                         "reason": reason,
                         "method": "table",
                         "scope_seen": page_scope_context or "Not detected",
+                        "year_confirmed": year_confirmed,
                     })
 
         # Fallback: only inspect statement-like rows, not arbitrary prose where
@@ -399,6 +400,7 @@ def extract_financial_items(
                     "reason": reason,
                     "method": "text",
                     "scope_seen": page_scope_context or "Not detected",
+                    "year_confirmed": False,
                 })
 
     evidence: dict[str, dict[str, Any]] = {}
@@ -418,8 +420,29 @@ def extract_financial_items(
         best = options[0]
         # Only pre-fill with reasonably supported candidates. Others are shown
         # as evidence for the user but must be manually entered.
+        alternatives = [
+            {
+                "value": item["value"],
+                "label": item["label"],
+                "page": item["page"],
+                "confidence": item["confidence"],
+                "method": item["method"],
+                "year_confirmed": item.get("year_confirmed", False),
+                "snippet": item["snippet"],
+            }
+            for item in options[1:4]
+        ]
+        # Similar-strength candidates with different values are ambiguous.
+        best["alternatives"] = alternatives
+        best["ambiguous"] = any(
+            item["value"] != best["value"]
+            and abs(item["confidence"] - best["confidence"]) < 0.12
+            for item in alternatives
+        )
         evidence[code] = best
-        if best["confidence"] >= 0.62:
+        # Never auto-fill unless the exact fiscal-year column was identified
+        # and similarly ranked candidates do not disagree.
+        if best["confidence"] >= 0.75 and best.get("year_confirmed") and not best["ambiguous"]:
             values[code] = best["value"]
 
     unit, unit_note = _unit_hint(all_text)
