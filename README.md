@@ -1,6 +1,15 @@
-# Corporate Risk Manager + Company Financial Analysis
+# SmartFin — SQL-First Financial Statement Analyzer
 
-A beginner-friendly Flask and SQLite project combining a corporate risk register with a small financial statement analyzer.
+A beginner-friendly DBMS project focused on Oracle SQL, data integrity, reviewable financial data, and financial ratio calculations. The current Flask website is still a SQLite prototype; the dedicated Oracle schema and SQL/PLSQL scripts are in [`oracle/`](oracle/README.md). The website will be connected to Oracle as a separate integration step.
+
+## SQL project track (priority)
+- Five core Oracle tables: `COMPANY`, `FINANCIAL_PERIOD`, `FINANCIAL_ITEM`, `RAW_FINANCIAL_DATA`, and `FINANCIAL_VALUE`.
+- Primary keys, foreign keys, unique constraints, check constraints, and indexes.
+- A review queue for extracted candidates so unverified PDF numbers are not treated as authoritative values.
+- A PL/SQL procedure to validate and save an approved figure.
+- SQL queries and a view for current ratio, quick ratio, working capital, and period comparison.
+
+**Start here:** follow [`oracle/README.md`](oracle/README.md), then run the files in `oracle/` with Oracle SQL Developer.
 
 ## Features
 ### Corporate risk register
@@ -60,10 +69,5 @@ Then select **Company Analysis** in the navigation to upload an annual report.
 
 Ratios should be compared across years and with industry peers; simple rules are not investment advice.
 
-## Database design
-The original risk tables remain. Financial analysis adds:
-- `companies`: one row per company
-- `financial_periods`: one row per company/year/unit
-- `financial_values`: one row per item per period
-
-The composite primary key on financial_values prevents duplicate item codes per period. CHECK constraints limit accepted financial items and non-negative values. SQLite transactions save a company's period and all validated values together.
+## Current application database status
+The existing Flask prototype still uses SQLite and its tables are created from `schema.sql`. The Oracle implementation is maintained separately under `oracle/`; it is not yet the backend used by the website. Do not claim the app stores data in Oracle until the Python connection and upload/review flow have been switched and tested. Avoid putting database credentials or session secrets into Git.
