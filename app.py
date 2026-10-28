@@ -48,6 +48,7 @@ def initialize():
                 con.execute(f"ALTER TABLE financial_values ADD COLUMN {column} {definition}")
         con.execute("CREATE INDEX IF NOT EXISTS idx_financial_values_item ON financial_values(item_code, period_id)")
     _migrate_financial_values_allow_losses()
+    _migrate_financial_periods_unique_scope()
 
 
 def _migrate_financial_values_allow_losses():
@@ -93,6 +94,45 @@ def _migrate_financial_values_allow_losses():
         raise
     finally:
         con.close()
+
+def _migrate_financial_periods_unique_scope():
+    """Let one company/year store standalone and consolidated periods separately."""
+    con = sqlite3.connect(DB_FILE, timeout=10)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys=OFF")
+    try:
+        row = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='financial_periods'").fetchone()
+        if not row:
+            return
+        ddl = re.sub(r"\s+", " ", row["sql"] or "").lower()
+        if "unique(company_id, fiscal_year, statement_scope)" in ddl:
+            return
+        con.execute("BEGIN")
+        con.execute("""CREATE TABLE financial_periods_new (
+            period_id INTEGER PRIMARY KEY,
+            company_id INTEGER NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
+            fiscal_year TEXT NOT NULL,
+            unit TEXT NOT NULL CHECK (unit IN ('INR crore','INR lakh','INR')),
+            source_filename TEXT,
+            statement_scope TEXT NOT NULL DEFAULT 'CONSOLIDATED'
+                CHECK (statement_scope IN ('STANDALONE','CONSOLIDATED')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(company_id, fiscal_year, statement_scope)
+        )""")
+        con.execute("""INSERT INTO financial_periods_new
+            (period_id,company_id,fiscal_year,unit,source_filename,statement_scope,created_at)
+            SELECT period_id,company_id,fiscal_year,unit,source_filename,statement_scope,created_at
+            FROM financial_periods""")
+        con.execute("DROP TABLE financial_periods")
+        con.execute("ALTER TABLE financial_periods_new RENAME TO financial_periods")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_financial_periods_company_year ON financial_periods(company_id, fiscal_year)")
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
 
 def seed():
     with db() as con:
@@ -532,7 +572,7 @@ def company_analysis():
             if file_path:
                 file_path.unlink(missing_ok=True)
 
-    companies = query("""SELECT c.company_name, p.fiscal_year, p.period_id, p.unit,
+    companies = query("""SELECT c.company_name, p.fiscal_year, p.period_id, p.unit, p.statement_scope,
         COUNT(v.item_code) AS item_count FROM financial_periods p
         JOIN companies c USING(company_id) LEFT JOIN financial_values v USING(period_id)
         GROUP BY p.period_id ORDER BY c.company_name, p.fiscal_year DESC""")
@@ -591,13 +631,12 @@ def save_company_financials():
             con.execute("""INSERT INTO financial_periods
                 (company_id,fiscal_year,unit,source_filename,statement_scope)
                 VALUES(?,?,?,?,?)
-                ON CONFLICT(company_id,fiscal_year) DO UPDATE SET
-                    unit=excluded.unit, source_filename=excluded.source_filename,
-                    statement_scope=excluded.statement_scope""",
+                ON CONFLICT(company_id,fiscal_year,statement_scope) DO UPDATE SET
+                    unit=excluded.unit, source_filename=excluded.source_filename""",
                 (company_id, year, unit, filename, scope))
             period_id = con.execute(
-                "SELECT period_id FROM financial_periods WHERE company_id=? AND fiscal_year=?",
-                (company_id, year),
+                "SELECT period_id FROM financial_periods WHERE company_id=? AND fiscal_year=? AND statement_scope=?",
+                (company_id, year, scope),
             ).fetchone()["period_id"]
 
             for code, value in values.items():
