@@ -1,38 +1,36 @@
-# SmartFin Oracle SQL Track
+# SmartFin — Fintech Fraud Analytics
 
-This directory is the SQL-first database implementation for SmartFin. It keeps the first milestone deliberately small: one company's annual-report values, a human review step, and three liquidity calculations.
+SmartFin has pivoted from annual-report analysis to a SQL-first fintech fraud analytics warehouse inspired by the objectives and synthetic dataset in [Fintech-Risk-Analytics](https://github.com/Akshay-gurav-31/Fintech-Risk-Analytics). This repository contains its own Oracle-compatible schema and queries rather than copying the source project's SQL wholesale.
 
-## Run scripts in this order
+## Objective
 
-Use Oracle SQL Developer and connect to your own project schema. Open each script and run it with **F5 (Run Script)**.
+Analyze payment transactions to identify suspicious transaction patterns, measure chargeback loss, understand merchant risk, and prioritize alerts for human review.
 
-1. `01_schema.sql` — creates the five core tables, indexes, and a liquidity input view.
-2. `02_seed_financial_items.sql` — inserts/updates the small standard financial-item dictionary. It is safe to run again.
-3. `03_analysis_queries.sql` — example SELECTs for the review queue, stored values, ratios, and year-over-year comparison.
-4. `04_validate_and_save.sql` — creates a PL/SQL procedure to approve an extracted candidate after review.
+## Seven-table model
 
-## Core database flow
+- `LOCATIONS`: country, region/state, city, ZIP code, and location risk score.
+- `DEVICES`: device/browser/IP details and VPN/proxy indicator.
+- `CUSTOMERS`: profile, account status, KYC state, and primary location.
+- `MERCHANTS`: merchant/category details and current risk tier.
+- `TRANSACTIONS`: central payment fact table.
+- `CHARGEBACKS`: disputed transactions, reasons, amounts, outcomes.
+- `FRAUD_ALERTS`: rule, risk score, review status, and resolution.
 
-`PDF text extractor (Python)` → `RAW_FINANCIAL_DATA (PENDING)` → reviewer calls `VALIDATE_AND_SAVE_FINANCIAL_VALUE` → `FINANCIAL_VALUE` → analysis queries.
+## Run order
 
-- `COMPANY`: company master record.
-- `FINANCIAL_PERIOD`: fiscal year, statement scope, currency and unit.
-- `FINANCIAL_ITEM`: small set of standard financial labels/metric definitions.
-- `RAW_FINANCIAL_DATA`: proposed extracted numbers plus source label/page/evidence and status.
-- `FINANCIAL_VALUE`: approved, standardized values used for calculations.
+1. `01_schema.sql`: create the Oracle tables, foreign keys, checks, and indexes.
+2. `02_import_data.md`: download and import CSVs in dependency order.
+3. `03_analysis_queries.sql`: start with basic queries, then work through CTEs and window functions.
+4. `04_generate_fraud_alerts.sql`: optionally add illustrative High Velocity and Device Farming alerts.
 
-The unique constraint on `FINANCIAL_PERIOD (COMPANY_ID, FISCAL_YEAR, STATEMENT_SCOPE)` prevents duplicate reporting periods. The unique constraint on `FINANCIAL_VALUE (PERIOD_ID, ITEM_ID)` prevents two approved values for the same item in one period. Foreign keys maintain relationships, and check constraints validate report scope, units, confidence scores, and review status.
+## SQL skills
 
-## Project formulas
+Joins, PK/FK constraints, indexes, `GROUP BY`/ `HAVING`, conditional aggregation, CTEs, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, rolling analytic windows, and `MERGE`.
 
-- Current ratio = Current assets / Current liabilities
-- Quick ratio = (Current assets − Inventory) / Current liabilities
-- Working capital = Current assets − Current liabilities
+## Scope
 
-The quick-ratio formula above is the project's simplified MVP definition. Every extracted candidate must be checked against the PDF for year, standalone/consolidated scope, units, and source label before approval.
+The database and SQL are the main deliverable. No ML, LLM, forecasting, or live transaction blocking. Rules flag patterns for investigation and do not prove fraud. The source data is synthetic/demo data.
 
-## Important current status
+## Current app status
 
-The existing Flask prototype still uses SQLite. These files create the Oracle schema and SQL/PLSQL layer, but they do **not** silently switch the website to Oracle. Python-to-Oracle connection and extractor inserts are a separate next step, requiring an Oracle connection string and credentials configured locally, not committed to GitHub.
-
-Do not commit database passwords or session secrets to the repository.
+The old Flask prototype still contains financial-statement pages and has not yet been rewritten for fraud analytics. The SQL project is the current priority; update the UI and add Oracle connectivity only after the schema, data import, and queries work. No database credentials should be committed to Git.
