@@ -12,10 +12,6 @@ erDiagram
   TRANSACTIONS ||--o{ FRAUD_ALERTS : may_trigger
 ```
 
-## Relationship notes
+One location can serve many devices, customers, and merchants. A customer, merchant, or device can be linked to many transactions. A transaction can have zero or more chargeback records and fraud alerts. Transactions form the central fact table, while the other tables provide context for analysis.
 
-- One location can be associated with many devices, customers, and merchants.
-- A customer can make many transactions; each transaction references one customer, merchant, and device when that information is available.
-- A transaction can have zero or more chargebacks and fraud alerts.
-- The `TRANSACTIONS` table is the central fact table; the other tables provide customer, merchant, device, location, dispute, and review context.
-- Use the foreign keys and indexes in `oracle/01_schema.sql` to preserve relationships and support common joins.
+The Oracle constraints and indexes are defined in `oracle/01_schema.sql`.
