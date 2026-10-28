@@ -1,14 +1,15 @@
 # SmartFin — Fintech Fraud Analytics (Oracle SQL)
 
-This project analyzes synthetic payment transactions using Oracle SQL. The goal is to demonstrate relational design, joins, aggregation, CTEs, window functions and simple rule-generated alerts.
+This project uses Oracle SQL to analyze synthetic payment transactions, chargebacks, merchant risk, and rule-generated fraud alerts.
 
-## Run order
+## Recommended run order
 
-1. Run `01_schema.sql` in Oracle SQL Developer with **F5**.
-2. Rebuild large local CSV files by running `python Datasets/assemble_large_csvs.py` from the repo root.
-3. Follow [`02_import_data.md`](02_import_data.md) to import all seven CSVs in parent-to-child order.
-4. Run `03_analysis_queries.sql` section by section.
-5. Optionally run `04_generate_fraud_alerts.sql` to add High Velocity and Device Farming alerts.
+1. From the repository root, run `Fraud_Intelligence_Project.sql` in Oracle SQL Developer with **F5**. It creates the tables and indexes.
+2. Rebuild the two large local CSVs with `python Datasets/assemble_large_csvs.py`.
+3. Follow `02_import_data.md` to import all seven CSV files in parent-to-child order.
+4. Run `05_data_quality_checks.sql` to confirm data was loaded and inspect ranges/status values.
+5. Run `03_analysis_queries.sql` section by section.
+6. Optionally run `04_generate_fraud_alerts.sql` to create illustrative High Velocity and Device Farming alerts.
 
 ## Seven-table schema
 
@@ -17,8 +18,8 @@ This project analyzes synthetic payment transactions using Oracle SQL. The goal 
 - `CUSTOMERS`: customer profile and KYC flag.
 - `MERCHANTS`: merchant/category metadata and risk tier.
 - `TRANSACTIONS`: central fact table for payments.
-- `CHARGEBACKS`: disputes, reason codes and outcomes.
-- `FRAUD_ALERTS`: generated or imported signals and reviewer resolutions.
+- `CHARGEBACKS`: disputes, reason codes, amounts and outcomes.
+- `FRAUD_ALERTS`: generated/imported signals and reviewer resolutions.
 
 ## SQL concepts
 
@@ -26,4 +27,4 @@ PK/FK constraints, check constraints, indexes, joins, conditional aggregation, `
 
 ## Interpretation
 
-Risk scores and thresholds are illustrative academic rules. They should be reviewed and tuned; no single signal should be treated as proof of fraud or used to block a real payment. The source CSVs are attributed in `Datasets/README.md`. The upstream repository did not expose a LICENSE file at the time of review, so confirm redistribution permission before publishing another public copy.
+Risk scores and thresholds are illustrative academic rules. They should be reviewed and tuned; no single signal proves fraud or should be used to block a real payment. Dataset attribution is recorded in `Datasets/README.md`. The upstream repository did not expose a LICENSE file at the time of review, so confirm redistribution permission before publishing another public copy.
