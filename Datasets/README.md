@@ -18,7 +18,7 @@ The upstream `devices.csv` and `transactions.csv` files are large, so their data
 python Datasets/assemble_large_csvs.py
 ```
 
-This creates `Datasets/devices.csv` and `Datasets/transactions.csv` locally. The reconstructed files are ignored by Git so the repository only stores the numbered parts. Use the reconstructed files for Oracle SQL Developer's CSV import wizard.
+This creates `Datasets/devices.csv` and `Datasets/transactions.csv` locally. The reconstructed files are ignored by Git so the repository only stores the numbered parts. Use the reconstructed files for MySQL Workbench's Table Data Import Wizard.
 
 ## Source and reuse note
 
