@@ -47,7 +47,7 @@ def main() -> int:
     except OSError as exc:
         print(f"Dataset assembly failed: {exc}", file=sys.stderr)
         return 1
-    print("Done. Import the reconstructed CSV files into Oracle in the order documented in oracle/02_import_data.md.")
+    print("Done. Import the reconstructed CSV files into MySQL Workbench in the order documented in mysql/02_import_data.md.")
     return 0
 
 
