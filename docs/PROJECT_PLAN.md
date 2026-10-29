@@ -1,20 +1,20 @@
-# SmartFin Project Plan — Fintech Fraud Analytics
+# SmartFin Project Plan — MySQL Fintech Fraud Analytics
 
 ## Goal
-Build an SQL-first fintech risk analytics warehouse in Oracle. Import synthetic payment data and use SQL to identify suspicious transaction behavior and measure merchant chargeback exposure.
+Build a SQL-first fintech risk analytics warehouse using MySQL 8.0. Import synthetic payment data and use SQL to identify suspicious transaction patterns and measure merchant chargeback exposure.
 
 ## Milestones
 
-1. Create the seven-table schema using `oracle/01_schema.sql`.
-2. Import CSV data following `oracle/02_import_data.md`, loading parent tables before dependent tables.
-3. Run core SQL: approval rates, declined transactions, KYC status, VPN/proxy trends, chargeback losses, and merchant chargeback rates.
-4. Demonstrate advanced SQL with CTEs, conditional aggregation, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, and rolling windows.
-5. Optionally generate High Velocity and Device Farming alerts with `oracle/04_generate_fraud_alerts.sql`.
-6. Validate results, check row counts, and document false positives and limits.
-7. Only after SQL works, replace the old financial-statement UI with a small fraud dashboard backed by Oracle.
+1. Create the seven-table MySQL schema by running `Fraud_Intelligence_Project.sql` in MySQL Workbench.
+2. Rebuild the large CSV files with `python Datasets/assemble_large_csvs.py`.
+3. Import CSVs following `mysql/02_import_data.md`, loading parent tables before child tables.
+4. Run data-quality checks and compare imported row counts.
+5. Run SQL for approval rates, declined transactions, KYC, VPN/proxy trends, chargeback losses, and merchant chargeback ratios.
+6. Demonstrate advanced SQL with CTEs, conditional aggregation, `ROW_NUMBER`, `DENSE_RANK`, `LAG`, and rolling windows.
+7. Optionally generate High Velocity and Device Farming alerts with `mysql/03_generate_fraud_alerts.sql`.
 
 ## Tables
-`LOCATIONS`, `DEVICES`, `CUSTOMERS`, `MERCHANTS`, `TRANSACTIONS`, `CHARGEBACKS`, `FRAUD_ALERTS`.
+`locations`, `devices`, `customers`, `merchants`, `transactions`, `chargebacks`, and `fraud_alerts`.
 
 ## Scope boundaries
-No machine learning, RAG/LLM, forecasting, or complicated frontend. Thresholds are illustrative and alerts require human review.
+No machine learning, RAG/LLM, forecasting, or complicated frontend. Thresholds are illustrative indicators and alerts require human review.
